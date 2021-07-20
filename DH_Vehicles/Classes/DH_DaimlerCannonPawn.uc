@@ -12,9 +12,9 @@ defaultproperties
     // Gunsight
     DriverPositions(0)=(PositionMesh=SkeletalMesh'DH_DaimlerMk1_anm.turret_int',ViewLocation=(X=15,Y=-15,Z=0),ViewFOV=28.33,ViewPitchUpLimit=3641,ViewPitchDownLimit=63716,bDrawOverlays=true)
     // Periscope
-    DriverPositions(1)=(PositionMesh=SkeletalMesh'DH_DaimlerMk1_anm.turret_int',ViewLocation=(X=-8,Y=-33,Z=30),ViewFOV=90.0,TransitionUpAnim="com_open",ViewPitchUpLimit=0,ViewPitchDownLimit=65535,bDrawOverlays=true)
+    DriverPositions(1)=(PositionMesh=SkeletalMesh'DH_DaimlerMk1_anm.turret_int',DriverTransitionAnim="VSU76_com_close",ViewLocation=(X=-8,Y=-33,Z=30),ViewFOV=90.0,TransitionUpAnim="com_open",ViewPitchUpLimit=0,ViewPitchDownLimit=65535,bDrawOverlays=true)
     // Exposed
-    DriverPositions(2)=(PositionMesh=SkeletalMesh'DH_DaimlerMk1_anm.turret_int',TransitionDownAnim="com_close",DriverTransitionAnim="VSU76_com_open",ViewPitchUpLimit=10000,ViewPitchDownLimit=62000,ViewPositiveYawLimit=10000,ViewNegativeYawLimit=-10000,bExposed=true) // exposed
+    DriverPositions(2)=(PositionMesh=SkeletalMesh'DH_DaimlerMk1_anm.turret_int',DriverTransitionAnim="VSU76_com_open",TransitionDownAnim="com_close",ViewPitchUpLimit=10000,ViewPitchDownLimit=62000,ViewPositiveYawLimit=10000,ViewNegativeYawLimit=-10000,bExposed=true) // exposed
     // Binoculars
     DriverPositions(3)=(PositionMesh=SkeletalMesh'DH_DaimlerMk1_anm.turret_int',ViewFOV=12.0,DriverTransitionAnim="stand_idleiron_binoc",ViewPitchUpLimit=10000,ViewPitchDownLimit=62000,ViewPositiveYawLimit=10000,ViewNegativeYawLimit=-10000,bDrawOverlays=true,bExposed=true) // binoculars
 
@@ -24,7 +24,7 @@ defaultproperties
     BinocPositionIndex=3
     bLockCameraDuringTransition=true
 
-    DrivePos=(X=8.0,Y=3.0,Z=-4.5)
+    DrivePos=(X=0.0,Y=0.0,Z=-0.0)
     DriveAnim="VSU76_com_idle_close"
 
     bManualTraverseOnly=true        // TODO: figure out whether or not we have powered rotation

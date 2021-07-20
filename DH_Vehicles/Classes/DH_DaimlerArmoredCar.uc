@@ -24,10 +24,8 @@ defaultproperties
 
     // Vehicle weapons & passengers
     PassengerWeapons(0)=(WeaponPawnClass=class'DH_Vehicles.DH_DaimlerCannonPawn',WeaponBone="Turret_placement")
-    //PassengerPawns(0)=(AttachBone="body",DrivePos=(X=-125.0,Y=-70.0,Z=105.0),DriveRot=(Yaw=-16384),DriveAnim="VHalftrack_Rider4_idle")
-    //PassengerPawns(1)=(AttachBone="body",DrivePos=(X=-165.0,Y=-35.0,Z=105.0),DriveRot=(Yaw=32768),DriveAnim="VHalftrack_Rider4_idle")
-    //PassengerPawns(2)=(AttachBone="body",DrivePos=(X=-165.0,Y=35.0,Z=105.0),DriveRot=(Yaw=32768),DriveAnim="VHalftrack_Rider5_idle")
-    //PassengerPawns(3)=(AttachBone="body",DrivePos=(X=-125.0,Y=75.0,Z=105.0),DriveRot=(Yaw=16384),DriveAnim="VHalftrack_Rider5_idle")
+    PassengerPawns(0)=(AttachBone="body",DrivePos=(X=-125.0,Y=-70.0,Z=105.0),DriveRot=(Yaw=-16384),DriveAnim="VHalftrack_Rider4_idle")
+    PassengerPawns(1)=(AttachBone="body",DrivePos=(X=-165.0,Y=-35.0,Z=105.0),DriveRot=(Yaw=32768),DriveAnim="VHalftrack_Rider4_idle")
 
     // Driver
     DriverPositions(0)=(PositionMesh=SkeletalMesh'DH_DaimlerMk1_anm.body_int',TransitionUpAnim="overlay_out",ViewPitchUpLimit=2048,ViewPitchDownLimit=63488,ViewPositiveYawLimit=8192,ViewNegativeYawLimit=-8192)
