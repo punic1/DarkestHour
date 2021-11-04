@@ -14,14 +14,13 @@ defaultproperties
     bnodelete=false
 
     bDynamicLight=true
-    //bMovable=true
+    bMovable=true
 
-    LightEffect=LE_NonIncidence
     LightType=LT_Steady
-    LightBrightness = 64.0
-    LightRadius = 2.0
+    LightBrightness = 24.0
+    LightRadius = 5.0
     LightHue = 20
-    LightSaturation = 255
+    LightSaturation = 128
     AmbientGlow = 254
     LightCone = 8
 }

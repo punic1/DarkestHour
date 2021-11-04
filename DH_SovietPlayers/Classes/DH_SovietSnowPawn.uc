@@ -3,7 +3,7 @@
 // Darklight Games (c) 2008-2021
 //==============================================================================
 
-class DH_SovietSnowPawn extends DH_SovietPawn_Balaklava;
+class DH_SovietSnowPawn extends DH_SovietPawn;
 
 defaultproperties
 {

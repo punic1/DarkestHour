@@ -12,5 +12,4 @@ defaultproperties
     Skins(0)=Texture'Characters_tex.rus_heads.rus_face01'
 
     bReversedSkinsSlots=true
-
 }

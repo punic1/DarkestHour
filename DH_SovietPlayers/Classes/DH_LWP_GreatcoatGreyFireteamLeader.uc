@@ -3,16 +3,13 @@
 // Darklight Games (c) 2008-2021
 //==============================================================================
 
-class DH_LWP_GreatcoatFireteamLeader_Winter extends DHPOLCorporalRoles;
+class DH_LWP_GreatcoatGreyFireteamLeader extends DHPOLCorporalRoles;
 
 defaultproperties
 {
-    RolePawns(0)=(PawnClass=class'DH_SovietPlayers.DH_LWPGreatcoatBrownSLPawn_Winter',Weight=1.0)
-    RolePawns(1)=(PawnClass=class'DH_SovietPlayers.DH_LWPGreatcoatGreySLPawn_Winter',Weight=1.0)
-    RolePawns(2)=(PawnClass=class'DH_SovietPlayers.DH_LWPGreatcoatGreyBagPawn_Winter',Weight=4.0)
+    RolePawns(0)=(PawnClass=class'DH_SovietPlayers.DH_LWPGreatcoatGreyBagPawn',Weight=1.0)
     Headgear(0)=class'DH_SovietPlayers.DH_LWPcap'
     Headgear(1)=class'DH_SovietPlayers.DH_LWPHelmet'
-
     HeadgearProbabilities(0)=0.5
     HeadgearProbabilities(1)=0.5
 
@@ -25,9 +22,4 @@ defaultproperties
     SecondaryWeapons(0)=(Item=class'DH_Weapons.DH_P08LugerWeapon')
     SecondaryWeapons(1)=(Item=class'DH_Weapons.DH_Nagant1895Weapon')
     SecondaryWeapons(2)=(Item=class'DH_Weapons.DH_ViSWeapon')
-    
-    HandType=Hand_Gloved
-    GlovedHandTexture=Texture'DHSovietCharactersTex.soviet_gear.hands_sovgloves'
-    BareHandTexture=Texture'DHSovietCharactersTex.soviet_gear.hands_sovgloves'
-    CustomHandTexture=Texture'DHSovietCharactersTex.soviet_gear.hands_sovgloves'
 }
