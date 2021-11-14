@@ -21,13 +21,15 @@ defaultproperties
     Skins(0)=Texture'MilitaryAlliesSMT.Vehicles.Zis-5v'
     Skins(1)=FinalBlend'DH_VehiclesSOV_tex.ext_vehicles.ZiS5V_ForGlass_FB' // cab window glass
     Skins(2)=Texture'MilitaryAlliesSMT.Vehicles.Zis-5v' // rear bench seats (separate material slot so can be hidden in support truck to make room for supplies)
+    Skins(3)=Shader'DH_ZiS5V_tex.ZisTruck.zis_smallpieces_s'
+    Skins(4)=Shader'DH_ZiS5V_tex.ZisTruck.Zis_mainbody_s'
     BeginningIdleAnim="" // override unwanted inherited value as has no animations
 
     // Passengers (others are added in subclasses)
-    PassengerPawns(0)=(AttachBone="Passenger_front",DriveAnim="VHalftrack_Rider1_idle")
+    PassengerPawns(0)=(AttachBone="Passenger_front",DriveAnim="VHalftrack_Rider1_idle") // TO DO: this must have `PositionMesh=Mesh'DH_ZiS5V_anm.ZiS5V_int',` but it doesnt work
 
     // Driver
-    DriverPositions(0)=(ViewPitchUpLimit=4000,ViewPitchDownLimit=60000,ViewPositiveYawLimit=20000,ViewNegativeYawLimit=-20000,bExposed=true)
+    DriverPositions(0)=(PositionMesh=Mesh'DH_ZiS5V_anm.ZiS5V_int',ViewPitchUpLimit=4000,ViewPitchDownLimit=60000,ViewPositiveYawLimit=20000,ViewNegativeYawLimit=-20000,bExposed=true) 
     InitialPositionIndex=0
     DriveAnim="VUC_driver_idle_close"
 
