@@ -11,6 +11,7 @@ class DHVehicle extends ROWheeledVehicle
 // Structs
 struct PassengerPawn
 {
+    var mesh    PositionMesh;
     var name    AttachBone;
     var vector  DrivePos;
     var rotator DriveRot;
@@ -271,6 +272,9 @@ simulated function PostBeginPlay()
 // to flag bClientInitialized, & to skip lots of pointless stuff if an already destroyed vehicle gets replicated
 simulated function PostNetBeginPlay()
 {
+    local int WeaponPawnsIndex, i;
+    local DHPassengerPawn PassengerPawn;
+
     super.PostNetBeginPlay();
 
     // Net client initialisation, based on replicated info about driving status/position
@@ -300,6 +304,28 @@ simulated function PostNetBeginPlay()
 
     // Spawn a variety of vehicle attachment options
     SpawnVehicleAttachments();
+
+    // Assign interior meshes for passenger pawns
+    for (i = 0; i < PassengerPawns.Length; ++i)
+    {
+        if (PassengerPawns[i].PositionMesh == none)
+        {
+            continue;
+        }
+
+        WeaponPawnsIndex = FirstRiderPositionIndex + i;
+
+        if (WeaponPawnsIndex >= 0 &&
+            WeaponPawnsIndex < WeaponPawns.Length)
+        {
+            PassengerPawn = DHPassengerPawn(WeaponPawns[WeaponPawnsIndex]);
+
+            if (PassengerPawn != none)
+            {
+                PassengerPawn.PositionMesh = PassengerPawns[i].PositionMesh;
+            }
+        }
+    }
 }
 
 // Modified to destroy extra attachments & effects - including the DestructionEffect emitter

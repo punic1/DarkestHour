@@ -34,6 +34,7 @@ And always check a WeaponPawns array member exists before trying to do anything 
 var     array<class<DHPassengerPawn> >  PassengerClasses;
 
 var     bool    bUseDriverHeadBoneCam; // use the driver's head bone for the camera location
+var     mesh    PositionMesh;          // optional interior mesh
 
 ///////////////////////////////////////////////////////////////////////////////////////
 //  ************ ACTOR INITIALISATION, DESTRUCTION & KEY ENGINE EVENTS  ***********  //
@@ -110,6 +111,15 @@ simulated function SpecialCalcFirstPersonView(PlayerController PC, out Actor Vie
     // Finalise the camera with any shake
     CameraLocation += (PC.ShakeOffset >> PC.Rotation);
     CameraRotation = Normalize(CameraRotation + PC.ShakeRot);
+
+    // Switch to interior mesh if there's one
+    // TODO:
+    //   * We need to switch back to the exterior mesh when we leave the position.
+    //   * Make sure we're running this on client only.
+    if (PositionMesh != none && VehicleBase != none)
+    {
+        VehicleBase.LinkMesh(PositionMesh);
+    }
 }
 
 // Modified to remove everything except drawing basic vehicle HUD info
