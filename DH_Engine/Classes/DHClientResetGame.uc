@@ -11,13 +11,11 @@ Gets spawned & replicated to clients if the ResetGame option is used, or a round
 Finds all client-authoritative actors, i.e. non-replicated actors existing independently on client (e.g. locally spawned effects), & calls Reset() on them
 Then client actor's Reset() function can handle whatever is needed, e.g. for smoke effects it destroys itself so smoke clouds don't persist into new round
 Note that Reset also gets called on those actors in single player mode, where it will have the same desired result
-Also using it to make sure local player's WeaponUnlockTime is reset for new round
 
 TODO: think this actor can be replaced by using ClientReset(), which gets called on PlayerControllers whenever a round starts, including if ResetGame is used
 That function is already doing a foreach AllActors iteration to call Reset() on specified client actors
 Instead of certain specified class literals, I believe it can be used to simply call Reset() on all actors on the client
 They will only do anything if they have a Reset() function & it is simulated, which should only be the actors we want to reset/destroy
-ClientReset() would also be ideal for making sure the local player's WeaponUnlockTime is reset, as they are both in DHPlayer
 A change required would be in DHGame's state RoundInPlay BeginState() function, as it currently doesn't call ClientReset() on any spectating players
 */
 
@@ -35,14 +33,6 @@ simulated function PostBeginPlay()
             {
                 A.Reset();
             }
-        }
-
-        // Make sure local player's WeaponUnlockTime is reset
-        PC = DHPlayer(Level.GetLocalPlayerController());
-
-        if (PC != none)
-        {
-            PC.WeaponUnlockTime = PC.default.WeaponUnlockTime;
         }
     }
 

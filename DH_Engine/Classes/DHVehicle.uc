@@ -48,7 +48,6 @@ var     float       FriendlyResetDistance;       // used in CheckReset() as maxi
 var     bool        bClientInitialized;          // clientside flag that replicated actor has completed initialization (set at end of PostNetBeginPlay)
                                                  // (allows client code to determine whether actor is just being received through replication, e.g. in PostNetReceive)
 var     TreeMap_string_Object  NotifyParameters; // an object that can hold references to several other objects, which can be used by messages to build a tailored message
-var     int         WeaponLockTimeForTK;         // Number of seconds a player's weapons are locked for TKing this vehicle
 var     int         PreventTeamChangeForTK;      // Number of seconds a player cannot team change after TKing this vehicle
 
 // Driver & driving
@@ -417,11 +416,6 @@ function Died(Controller Killer, class<DamageType> DamageType, vector HitLocatio
 
             // Death message icon
             Level.Game.BroadcastDeathMessage(DHKiller, DHKiller, class'DHVehicleTeamKillDamageType');
-
-            // Lock weapons
-            DHKiller.WeaponLockViolations++;
-            DHKiller.LockWeapons(WeaponLockTimeForTK);
-            DHKiller.ReceiveLocalizedMessage(class'DHWeaponsLockedMessage', 4); // "Your weapons have been locked due to friendly fire!"
 
             // Prevent team change
             DHKiller.NextChangeTeamTime = GRI.ElapsedTime + PreventTeamChangeForTK;
@@ -4170,7 +4164,6 @@ defaultproperties
 {
     // Miscellaneous
     VehicleMass=3.0
-    WeaponLockTimeForTK=5
     PreventTeamChangeForTK=1500 // 25 minutes
     PointValue=250
     CollisionRadius=175.0

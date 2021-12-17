@@ -27,10 +27,6 @@ var     DHVoteManager               VoteManager;
 
 var     array<string>               FFViolationIDs;                         // Array of ROIDs that have been kicked once this session
 var()   config bool                 bSessionKickOnSecondFFViolation;
-var()   config bool                 bUseWeaponLocking;                      // Weapons can lock (preventing fire) for punishment
-var     int                         WeaponLockTimeSecondsInterval;
-var     int                         WeaponLockTimeSecondsMaximum;
-var     int                         WeaponLockTimeSecondsFFKillsMultiplier;
 
 var     bool                        bSkipPreStartTime;                      // Whether or not to skip the PreStartTime configured on the server
 
@@ -2094,7 +2090,7 @@ function Killed(Controller Killer, Controller Killed, Pawn KilledPawn, class<Dam
     local Controller P;
     local float      FFPenalty;
     local int        i;
-    local bool       bHasAPlayerAlive, bInformedKillerOfWeaponLock;
+    local bool       bHasAPlayerAlive;
     local array<DHGameReplicationInfo.MapMarker> FireSupportMapMarkers;
 
     if (Killed == none)
@@ -2155,25 +2151,6 @@ function Killed(Controller Killer, Controller Killed, Pawn KilledPawn, class<Dam
                 DHKilled.NextVehicleSpawnTime = DHKilled.LastKilledTime + SPAWN_KILL_RESPAWN_TIME;
                 ModifyReinforcements(DHKilled.GetTeamNum(), 1, false, true);
 
-                // Punish killer for spawn killing if the killed wasn't a combat spawn by incrementing his WeaponLockViolations & reducing his score
-                if (!DHPawn(KilledPawn).IsCombatSpawned())
-                {
-                    DHKiller.WeaponLockViolations++;
-
-                    // If friendly fire
-                    if (bTeamGame && Killer.PlayerReplicationInfo != none && Killed.PlayerReplicationInfo != none && Killer.PlayerReplicationInfo.Team == Killed.PlayerReplicationInfo.Team)
-                    {
-                        DHKiller.LockWeapons(Min(WeaponLockTimeSecondsMaximum, DHKiller.WeaponLockViolations * WeaponLockTimeSecondsInterval) + 1);
-                        DHKiller.ReceiveLocalizedMessage(class'DHWeaponsLockedMessage', 5); // "Your weapons have been locked due to spawn killing a friendly!"
-                        bInformedKillerOfWeaponLock = true;
-                    }
-                    else
-                    {
-                        DHKiller.LockWeapons(Min(WeaponLockTimeSecondsMaximum, DHKiller.WeaponLockViolations * WeaponLockTimeSecondsInterval) + 1);
-                        DHKiller.ReceiveLocalizedMessage(class'DHWeaponsLockedMessage', 0); // "Your weapons have been locked due to excessive spawn killing!"
-                    }
-                }
-
                 if (DHPawn(KilledPawn) != none && DHPawn(KilledPawn).SpawnPoint != none)
                 {
                     DHPawn(KilledPawn).SpawnPoint.OnSpawnKill(KilledPawn, Killer);
@@ -2232,21 +2209,6 @@ function Killed(Controller Killer, Controller Killed, Pawn KilledPawn, class<Dam
                 if (DHKiller != none)
                 {
                     BroadcastLocalizedMessage(GameMessageClass, 13, DHKiller.PlayerReplicationInfo);
-
-                    // Lock weapons for TKing, this is run twice if the TK was also a Spawn Kill (this means double violation for Spawn TKing)
-                    DHKiller.WeaponLockViolations++;
-
-                    if (DHPlayerReplicationInfo(DHKiller.PlayerReplicationInfo) != none)
-                    {
-                        // This will override the weapon lock time, TKs have a higher time punishment, however it will not override the message on that player's screen
-                        DHKiller.LockWeapons(Min(WeaponLockTimeSecondsMaximum, DHKiller.PlayerReplicationInfo.FFKills * WeaponLockTimeSecondsFFKillsMultiplier));
-
-                        // If we haven't already informed the killer of weapon lock (in the case of spawn killing a friendly), then inform them of weapon lock for TKing
-                        if (!bInformedKillerOfWeaponLock)
-                        {
-                            DHKiller.ReceiveLocalizedMessage(class'DHWeaponsLockedMessage', 4); // "Your weapons have been locked due to friendly fire!"
-                        }
-                    }
 
                     // If bForgiveFFKillsEnabled, store the friendly Killer into the Killed player's controller, so if they choose to forgive, we'll know who to forgive
                     if (bForgiveFFKillsEnabled && DHKilled != none)
@@ -3098,12 +3060,6 @@ state RoundInPlay
         if (GRI.DHRoundDuration != 0 && GRI.ElapsedTime > GRI.RoundEndTime)
         {
             ChooseWinner();
-        }
-
-        // Check whether local player has his weapons locked, but it's now time to unlock them (applies to single player or listen server host)
-        if (DHPlayer(Level.GetLocalPlayerController()) != none)
-        {
-            DHPlayer(Level.GetLocalPlayerController()).CheckUnlockWeapons();
         }
     }
 }
@@ -5371,13 +5327,7 @@ event PostLogin(PlayerController NewPlayer)
                 Teams[S.TeamIndex].AddToTeam(PC);
 
                 PC.LastKilledTime = S.LastKilledTime;
-                PC.WeaponLockViolations = S.WeaponLockViolations;
                 PC.NextChangeTeamTime = S.NextChangeTeamTime;
-
-                if (GameReplicationInfo != none && S.WeaponUnlockTime > GameReplicationInfo.ElapsedTime)
-                {
-                    PC.LockWeapons(S.WeaponUnlockTime - GameReplicationInfo.ElapsedTime);
-                }
             }
         }
 
@@ -5450,8 +5400,6 @@ function Logout(Controller Exiting)
         }
 
         S.LastKilledTime = PC.LastKilledTime;
-        S.WeaponUnlockTime = PC.WeaponUnlockTime;
-        S.WeaponLockViolations = PC.WeaponLockViolations;
         S.NextChangeTeamTime = PC.NextChangeTeamTime;
 
         if (PRI.Team != none)
@@ -5902,11 +5850,6 @@ defaultproperties
 
     MetricsClass=class'DHMetrics'
     bEnableMetrics=true
-    bUseWeaponLocking=true
-
-    WeaponLockTimeSecondsInterval=5
-    WeaponLockTimeSecondsMaximum=120
-    WeaponLockTimeSecondsFFKillsMultiplier=10
 
     bUseIdleKickingThreshold=true
     EnableIdleKickingThreshold=50

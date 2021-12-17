@@ -47,14 +47,6 @@ event ModeDoFire()
         return;
     }
 
-    // Stop an already drawn back explosive from being thrown if player's weapons become locked (due to spawn killing)
-    // Happens because that forces the fire button to be released, which triggers this event
-    // TODO: clean this up & perhaps find a better place to do this, it's just a quick fix with some problems (Matt, Jan 2017)
-    if (Instigator != none && DHPlayer(Instigator.Controller) != none && DHPlayer(Instigator.Controller).AreWeaponsLocked())
-    {
-        return;
-    }
-
     super.ModeDoFire();
 
     // Consume ammo on the client as well, if the ammo count hasn't been net updated yet - this should prevent some of the ammo amount related lag bugs

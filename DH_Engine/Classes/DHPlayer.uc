@@ -92,11 +92,6 @@ var     int                     DHPrimaryWeapon;            // Picking up RO's s
 var     int                     DHSecondaryWeapon;
 var     bool                    bSpawnPointInvalidated;
 var     int                     NextChangeTeamTime;         // the time at which a player can change teams next
-                                                            // it resets whenever an objective is taken
-// Weapon locking (punishment for spawn killing)
-var     int                     WeaponUnlockTime;           // the time at which the player's weapons will be unlocked (being the round's future ElapsedTime in whole seconds)
-var     int                     PendingWeaponLockSeconds;   // fix for problem where player re-joins server with saved weapon lock, but client doesn't yet have GRI
-var     int                     WeaponLockViolations;       // the number of violations this player has, used to increase the locked period for multiple offences
 
 // Squads
 var     DHSquadReplicationInfo  SquadReplicationInfo;
@@ -201,13 +196,13 @@ replication
         ServerSendSquadMergeRequest, ServerAcceptSquadMergeRequest, ServerDenySquadMergeRequest,
         ServerSquadVolunteerToAssist,
         ServerPunishLastFFKiller, ServerRequestArtillery, ServerCancelArtillery, /*ServerVote,*/
-        ServerDoLog, ServerLeaveBody, ServerPossessBody, ServerDebugObstacles, ServerLockWeapons, // these ones in debug mode only
+        ServerDoLog, ServerLeaveBody, ServerPossessBody, ServerDebugObstacles, // these ones in debug mode only
         ServerTeamSurrenderRequest, ServerParadropPlayer, ServerParadropSquad, ServerParadropTeam,
         ServerNotifyRoles, ServerSaveArtilleryTarget, ServerSaveArtillerySupportSquadIndex;
 
     // Functions the server can call on the client that owns this actor
     reliable if (Role == ROLE_Authority)
-        ClientProne, ClientToggleDuck, ClientLockWeapons,
+        ClientProne, ClientToggleDuck,
         ClientAddHudDeathMessage, ClientFadeFromBlack, ClientProposeMenu,
         ClientConsoleCommand, ClientCopyToClipboard, ClientSaveROIDHash,
         ClientSquadInvite, ClientSquadSignal, ClientSquadLeaderVolunteerPrompt,
@@ -367,26 +362,6 @@ simulated function DH_LevelInfo GetLevelInfo()
     }
 
     return none;
-}
-
-// Modified to add hacky fix for problem where player re-joins a server with an active weapon lock saved in his DHPlayerSession
-// When that happens the weapon lock is passed to the client, but it doesn't yet have a GRI reference so it all goes wrong
-// In that situation we record a PendingWeaponLockSeconds on client, then here we use it to set the weapon lock on client as soon as it receives the GRI
-simulated function PostNetReceive()
-{
-    if (PendingWeaponLockSeconds > 0 && GameReplicationInfo != none)
-    {
-        LockWeapons(PendingWeaponLockSeconds);
-        PendingWeaponLockSeconds = 0;
-    }
-
-    super.PostNetReceive();
-}
-
-// Modified so we don't disable PostNetReceive() until we've received the GRI, which allows PendingWeaponLockSeconds functionality to work
-simulated function bool NeedNetNotify()
-{
-    return super.NeedNetNotify() || GameReplicationInfo == none;
 }
 
 // Modified to avoid "accessed none" error
@@ -3148,8 +3123,6 @@ function Reset()
 {
     super.Reset();
 
-    WeaponUnlockTime = default.WeaponUnlockTime;
-    WeaponLockViolations = default.WeaponLockViolations;
     NextSpawnTime = default.NextSpawnTime;
     SpawnPointIndex = default.SpawnPointIndex;
     VehiclePoolIndex = default.VehiclePoolIndex;
@@ -3549,53 +3522,6 @@ function ServerSetLockTankOnEntry(bool bEnabled)
     SetLockTankOnEntry(bEnabled);
 }
 
-// New function to put player into 'weapon lock' for a specified number of seconds, during which time he won't be allowed to fire
-simulated function LockWeapons(int Seconds)
-{
-    if (Seconds > 0 && GameReplicationInfo != none)
-    {
-        WeaponUnlockTime = GameReplicationInfo.ElapsedTime + Seconds;
-
-        // If this is the local player, release his fire buttons
-        if (Viewport(Player) != none)
-        {
-            bFire = 0; // 'releases' fire button if being held down, which stops automatic weapon fire from continuing & avoids spamming repeated messages & buzz sounds
-            bAltFire = 0;
-        }
-        // Or a server calls replicated function to do similar on an owning net client (passing seconds as a byte for efficient replication)
-        else if (Role == ROLE_Authority)
-        {
-            ClientLockWeapons(Seconds); // Force weapon lock on client
-        }
-    }
-    // Hacky fix for problem where player re-joins server with an active weapon lock saved in his DHPlayerSession, but client doesn't yet have GRI
-    // If we don't yet have GRI, we record a PendingWeaponLockSeconds  on client, then PostNetReceive() uses it to set weapon lock as soon as it receives GRI
-    else if (GameReplicationInfo == none)
-    {
-        PendingWeaponLockSeconds  = Seconds;
-    }
-}
-
-// New server-to-client replicated function to put owning net player into 'weapon lock' for a specified number of seconds, during which time he won't be allowed to fire
-simulated function ClientLockWeapons(byte Seconds)
-{
-    if (Role < ROLE_Authority)
-    {
-        LockWeapons(Seconds);
-    }
-}
-
-// New function to check whether player's weapons are locked (due to spawn killing) but are now due to be unlocked
-// Called from the 1 second timer running continually in the GameInfo & GRI actors (GRI for net clients)
-simulated function CheckUnlockWeapons()
-{
-    if (WeaponUnlockTime > 0 && GameReplicationInfo != none && GameReplicationInfo.ElapsedTime >= WeaponUnlockTime)
-    {
-        WeaponUnlockTime = 0; // reset this now, as when set it effectively acts as a flag that weapons are locked
-        ReceiveLocalizedMessage(class'DHWeaponsLockedMessage', 2); // "Your weapons are now unlocked"
-    }
-}
-
 // New helper function to check whether player's weapons are locked due to spawn killing, so he's unable to fire, including warning message on screen.
 // TODO: Make this return an enum as to the weapon lock reason and leave it up to the caller to send the messages.
 simulated function bool AreWeaponsLocked(optional bool bNoScreenMessage)
@@ -3604,18 +3530,11 @@ simulated function bool AreWeaponsLocked(optional bool bNoScreenMessage)
 
     GRI = DHGameReplicationInfo(GameReplicationInfo);
 
-    if (GRI != none && (WeaponUnlockTime > GRI.ElapsedTime || GRI.bIsInSetupPhase))
+    if (GRI != none && GRI.bIsInSetupPhase)
     {
         if (!bNoScreenMessage)
         {
-            if (GRI.bIsInSetupPhase)
-            {
-                ReceiveLocalizedMessage(class'DHWeaponsLockedMessage', 3,,, self); // "Your weapons are locked during the setup phase"
-            }
-            else
-            {
-                ReceiveLocalizedMessage(class'DHWeaponsLockedMessage', 1,,, self); // "Your weapons are locked for X seconds"
-            }
+            ReceiveLocalizedMessage(class'DHWeaponsLockedMessage', 3,,, self); // "Your weapons are locked during the setup phase"
         }
 
         return true;
@@ -3651,20 +3570,6 @@ simulated function DisplayDebug(Canvas Canvas, out float YL, out float YPos)
     Canvas.DrawText("     *******FlinchMeterValue*******:" @ FlinchMeterValue);
     YPos += YL;
     Canvas.SetPos(4.0, YPos);
-}
-
-// New debug exec to put self into 'weapon lock' for specified number of seconds
-exec function DebugLockWeapons(int Seconds)
-{
-    if (IsDebugModeAllowed())
-    {
-        ServerLockWeapons(Seconds);
-    }
-}
-
-function ServerLockWeapons(int Seconds)
-{
-    LockWeapons(Seconds);
 }
 
 // Modified to work in debug mode, as well as in single player
@@ -6071,13 +5976,6 @@ function ServerForgiveLastFFKiller()
     LastFFKiller.FFKills -= LastFFKillAmount;
 
     KillerPC = DHPlayer(LastFFKiller.Owner);
-
-    // If LastFFKiller's weapons are locked, unlock that player's weapons
-    if (KillerPC != none && KillerPC.AreWeaponsLocked(true))
-    {
-        KillerPC.LockWeapons(1); // Unlock weapons as soon as possible
-        KillerPC.ReceiveLocalizedMessage(class'DHWeaponsLockedMessage', 2); // "Weapons are now unlocked"
-    }
 
     // Set none as we have handled the current LastFFKiller
     LastFFKiller = none;

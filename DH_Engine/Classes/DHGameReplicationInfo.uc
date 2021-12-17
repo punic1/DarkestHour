@@ -679,11 +679,6 @@ simulated event Timer()
 {
     super.Timer();
 
-    if (Role < ROLE_Authority && DHPlayer(Level.GetLocalPlayerController()) != none)
-    {
-        DHPlayer(Level.GetLocalPlayerController()).CheckUnlockWeapons();
-    }
-
     if (Role == ROLE_Authority)
     {
         UpdateNoArtyVolumeStatuses();
