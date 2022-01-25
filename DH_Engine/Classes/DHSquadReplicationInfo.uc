@@ -2964,7 +2964,7 @@ defaultproperties
     DefaultSquadNames(2)=(USA="Charlie",Germany="Caesar",USSR="Vostok")
     DefaultSquadNames(3)=(USA="Dog",Germany="Dora",USSR="Grach")
     DefaultSquadNames(4)=(USA="Easy",Germany="Emil",USSR="Dub")
-    DefaultSquadNames(5)=(USA="Fox",Germany="Fritz",USSR="Enisei")
+    DefaultSquadNames(5)=(USA="Fox",Germany="Fritz",USSR="Yenisey")
     DefaultSquadNames(6)=(USA="George",Germany="Gustav",USSR="Zvezda")
     DefaultSquadNames(7)=(USA="How",Germany="Heinrich",USSR="Iskra")
     SquadMessageClass=class'DHSquadMessage'
