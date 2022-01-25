@@ -49,6 +49,18 @@ var private string                  AlliesNames[TEAM_SQUADS_MAX];
 var private byte                    AlliesLocked[TEAM_SQUADS_MAX];
 var private int                     AlliesNextRallyPointTimes[TEAM_SQUADS_MAX]; // Stores the next time (in relation to Level.TimeSeconds) that a squad can place a new rally point.
 
+struct DefaultSquadName
+{
+    var string USA;
+    var string Britain;
+    var string Canada;
+    var string USSR;
+    var string Poland;
+    var string Germany;
+};
+
+var private array<DefaultSquadName> DefaultSquadNames;
+
 var private array<string>           AlliesDefaultSquadNames;
 var private array<string>           AxisDefaultSquadNames;
 
@@ -630,7 +642,16 @@ function bool SwapSquadMembers(DHPlayerReplicationInfo A, DHPlayerReplicationInf
 // Returns the default squad name for the specified team and squad index.
 simulated function string GetDefaultSquadName(int TeamIndex, int SquadIndex)
 {
+    local DH_LevelInfo LI;
+
     if (SquadIndex < 0 || SquadIndex > GetTeamSquadLimit(TeamIndex))
+    {
+        return "";
+    }
+
+    LI = class'DH_LevelInfo'.static.GetInstance(Level);
+
+    if (LI == none)
     {
         return "";
     }
@@ -638,9 +659,16 @@ simulated function string GetDefaultSquadName(int TeamIndex, int SquadIndex)
     switch (TeamIndex)
     {
         case AXIS_TEAM_INDEX:
-            return default.AxisDefaultSquadNames[SquadIndex];
+            return default.DefaultSquadNames[SquadIndex].Germany;
         default:
-            return default.AlliesDefaultSquadNames[SquadIndex];
+            switch (LI.AlliedNation)
+            {
+                case NATION_USSR:
+                case NATION_Poland:
+                    return default.DefaultSquadNames[SquadIndex].USSR;
+                default:
+                    return default.DefaultSquadNames[SquadIndex].USA;
+            }
     }
 }
 
@@ -2931,22 +2959,14 @@ defaultproperties
     RallyPointInitialDelaySeconds=15.0
     RallyPointChangeLeaderDelaySeconds=30.0
     RallyPointRadiusInMeters=100.0
-    AlliesDefaultSquadNames(0)="Able"
-    AlliesDefaultSquadNames(1)="Baker"
-    AlliesDefaultSquadNames(2)="Charlie"
-    AlliesDefaultSquadNames(3)="Dog"
-    AlliesDefaultSquadNames(4)="Easy"
-    AlliesDefaultSquadNames(5)="Fox"
-    AlliesDefaultSquadNames(6)="George"
-    AlliesDefaultSquadNames(7)="How"
-    AxisDefaultSquadNames(0)="Anton"
-    AxisDefaultSquadNames(1)="Berta"
-    AxisDefaultSquadNames(2)="Caesar"
-    AxisDefaultSquadNames(3)="Dora"
-    AxisDefaultSquadNames(4)="Emil"
-    AxisDefaultSquadNames(5)="Fritz"
-    AxisDefaultSquadNames(6)="Gustav"
-    AxisDefaultSquadNames(7)="Heinrich"
+    DefaultSquadNames(0)=(USA="Able",Germany="Anton",USSR="Almaz")
+    DefaultSquadNames(1)=(USA="Baker",Germany="Berta",USSR="Berezka")
+    DefaultSquadNames(2)=(USA="Charlie",Germany="Caesar",USSR="Vostok")
+    DefaultSquadNames(3)=(USA="Dog",Germany="Dora",USSR="Grach")
+    DefaultSquadNames(4)=(USA="Easy",Germany="Emil",USSR="Dub")
+    DefaultSquadNames(5)=(USA="Fox",Germany="Fritz",USSR="Enisei")
+    DefaultSquadNames(6)=(USA="George",Germany="Gustav",USSR="Zvezda")
+    DefaultSquadNames(7)=(USA="How",Germany="Heinrich",USSR="Iskra")
     SquadMessageClass=class'DHSquadMessage'
     NextRallyPointInterval=45
     SquadLockMemberCountMin=3
