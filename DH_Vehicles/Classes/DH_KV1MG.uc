@@ -32,7 +32,7 @@ defaultproperties
     HudAltAmmoIcon=Texture'InterfaceArt_tex.HUD.dp27_ammo'
 
     // Weapon fire
-    WeaponFireAttachmentBone="muzzle"
+    WeaponFireAttachmentBone="mg_yaw"
     WeaponFireOffset=-8
     AmbientSoundScaling=1.3 // TODO: compare to DH MGs that use 2.75
     FireSoundClass=SoundGroup'DH_WeaponSounds.dt_fire_loop'

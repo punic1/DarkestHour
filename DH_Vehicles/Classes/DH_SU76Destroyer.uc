@@ -107,11 +107,10 @@ defaultproperties
     ShutDownSound=Sound'Vehicle_Engines.T60.t60_engine_stop'
     RumbleSoundBone="body"
     RumbleSound=sound'Vehicle_Engines.tank_inside_rumble01'
-
-    LeftTrackSoundBone="Tread_L"
-    RightTrackSoundBone="Tread_R"
-    LeftTreadSound=Sound'Vehicle_Engines.tracks.track_squeak_L09'
-    RightTreadSound=Sound'Vehicle_Engines.tracks.track_squeak_R09'
+    LeftTrackSoundBone="Track_L"
+    RightTrackSoundBone="Track_R"
+    LeftTreadSound=Sound'Vehicle_EnginesTwo.UC.UC_tread_L'
+    RightTreadSound=Sound'Vehicle_EnginesTwo.UC.UC_tread_R'
 
 
     // Visual effects
