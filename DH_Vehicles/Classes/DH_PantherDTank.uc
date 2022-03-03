@@ -50,12 +50,14 @@ defaultproperties
     PeriscopeOverlay=Texture'DH_VehicleOptics_tex.General.PERISCOPE_overlay_German'
 
     // Hull armor
-    FrontArmor(0)=(Thickness=6.5,Slope=-55.0,MaxRelativeHeight=-8.0,LocationName="lower")
-    FrontArmor(1)=(Thickness=8.5,Slope=55.0,LocationName="upper")
-    RightArmor(0)=(Thickness=4.5,MaxRelativeHeight=23.0,LocationName="lower")
-    RightArmor(1)=(Thickness=4.0,Slope=30.0,LocationName="upper")
-    LeftArmor(0)=(Thickness=4.5,MaxRelativeHeight=23.0,LocationName="lower")
-    LeftArmor(1)=(Thickness=4.0,Slope=30.0,LocationName="upper")
+    FrontArmor(0)=(Thickness=6.0,Slope=-55.0,MaxRelativeHeight=-8.0,LocationName="lower")
+    FrontArmor(1)=(Thickness=8.0,Slope=55.0,LocationName="upper")
+    RightArmor(0)=(Thickness=4.5,MaxRelativeHeight=0.0,LocationName="lower_tracks")
+	RightArmor(1)=(Thickness=4.2,MaxRelativeHeight=22.0,LocationName="lower")
+    RightArmor(2)=(Thickness=4.0,Slope=40.0,LocationName="upper")
+    LeftArmor(0)=(Thickness=4.5,MaxRelativeHeight=0.0,LocationName="lower_tracks")
+	LeftArmor(1)=(Thickness=4.2,MaxRelativeHeight=22.0,LocationName="lower")
+    LeftArmor(2)=(Thickness=4.0,Slope=40.0,LocationName="upper")
     RearArmor(0)=(Thickness=4.0,Slope=-30.0)
 
     FrontLeftAngle=334.0

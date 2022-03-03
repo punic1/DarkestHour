@@ -11,14 +11,13 @@ defaultproperties
     Mesh=SkeletalMesh'DH_KV_1and2_anm.KV_MG'
     FireEffectOffset=(X=-40.0,Y=-5.0,Z=0.0)
     WeaponAttachOffset=(X=2.0,Y=-3.5,Z=-1.0) // the MG mesh is off-kilter when not adjusted
-
     FireAttachBone="mg_yaw"
 
     // Movement
     MaxPositiveYaw=4000
     MaxNegativeYaw=-4500
-    PitchBone="mg_pivot"
-    YawBone="mg_pivot"
+    PitchBone="mg_placement1"
+    YawBone="mg_placement1"
     CustomPitchUpLimit=3000
     CustomPitchDownLimit=63000
 

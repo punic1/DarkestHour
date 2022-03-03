@@ -46,12 +46,14 @@ defaultproperties
     PeriscopeOverlay=Texture'DH_VehicleOptics_tex.General.PERISCOPE_overlay_German'
 
     // Hull armor
-    FrontArmor(0)=(Thickness=6.5,Slope=-55.0,MaxRelativeHeight=56.8,LocationName="lower")
+    FrontArmor(0)=(Thickness=6.5,Slope=-60.0,MaxRelativeHeight=56.8,LocationName="lower")
     FrontArmor(1)=(Thickness=8.2,Slope=55.0,LocationName="superstructure")
-    RightArmor(0)=(Thickness=4.3,MaxRelativeHeight=84.0,LocationName="lower") //add a little for road wheels/schurzen
-    RightArmor(1)=(Thickness=5.0,Slope=30.0,LocationName="superstructure")
-    LeftArmor(0)=(Thickness=4.0,MaxRelativeHeight=84.0,LocationName="lower")
-    LeftArmor(1)=(Thickness=5.0,Slope=30.0,LocationName="superstructure")
+    RightArmor(0)=(Thickness=4.5,MaxRelativeHeight=-15.0,LocationName="lower_tracks") //add a little for road wheels/schurzen
+	RightArmor(1)=(Thickness=4.1,MaxRelativeHeight=2.0,LocationName="lower")
+    RightArmor(2)=(Thickness=5.0,Slope=30.0,LocationName="superstructure")
+    LeftArmor(0)=(Thickness=4.5,MaxRelativeHeight=-15.0,LocationName="lower_tracks")
+	LeftArmor(1)=(Thickness=4.1,MaxRelativeHeight=2.0,LocationName="lower")
+    LeftArmor(2)=(Thickness=5.0,Slope=30.0,LocationName="superstructure")
     RearArmor(0)=(Thickness=4.0,Slope=-30.0,MaxRelativeHeight=109.8,LocationName="lower")
     RearArmor(1)=(Thickness=4.0,Slope=33.0,LocationName="superstructure")
 
@@ -80,10 +82,10 @@ defaultproperties
     VehHitpoints(3)=(PointRadius=15.0,PointHeight=10.0,PointScale=1.0,PointBone="body",PointOffset=(Y=45.0,Z=50.0),DamageMultiplier=5.0,HitPointType=HP_AmmoStore)
     VehHitpoints(4)=(PointRadius=15.0,PointHeight=10.0,PointScale=1.0,PointBone="body",PointOffset=(X=35.0,Y=45.0,Z=50.0),DamageMultiplier=5.0,HitPointType=HP_AmmoStore)
     NewVehHitpoints(0)=(PointRadius=8.0,PointBone="body",PointOffset=(X=55.0,Y=-40.0,Z=77.0),NewHitPointType=NHP_GunOptics)
-    NewVehHitpoints(1)=(PointRadius=15.0,PointBone="Turret_placement",PointOffset=(X=72.0,Z=45.0),NewHitPointType=NHP_Traverse)
-    NewVehHitpoints(2)=(PointRadius=15.0,PointBone="Turret_placement",PointOffset=(X=72.0,Z=45.0),NewHitPointType=NHP_GunPitch)
+    NewVehHitpoints(1)=(PointRadius=15.0,PointBone="Turret_placement",PointOffset=,NewHitPointType=NHP_Traverse)
+    NewVehHitpoints(2)=(PointRadius=15.0,PointBone="Turret_placement",PointOffset=,NewHitPointType=NHP_GunPitch)
     GunOpticsHitPointIndex=0
-    TreadHitMaxHeight=60.0
+    TreadHitMaxHeight=-10.0
     TreadDamageThreshold=0.85
     DamagedEffectScale=1.1
     DamagedEffectOffset=(X=-135.0,Y=20.0,Z=108.0)
