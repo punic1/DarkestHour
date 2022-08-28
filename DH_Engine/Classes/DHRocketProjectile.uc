@@ -129,7 +129,7 @@ defaultproperties
     BallisticCoefficient=0.05
     SpeedFudgeScale=1.0
     InitialAccelerationTime=0.1
-    StraightFlightTime=0.2 //time that smoke trail and corona (tracer) effect are activated after launch
+    StraightFlightTime=0.5 //time that smoke trail and corona (tracer) effect are activated after launch
     RotationRate=(Roll=0)
     DesiredRotation=(Roll=0)
 

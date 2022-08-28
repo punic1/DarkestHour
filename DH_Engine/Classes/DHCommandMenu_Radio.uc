@@ -147,8 +147,9 @@ function OnSelect(int OptionIndex, vector Location)
 
         if (Error == ERROR_None)
         {
-            PC.ServerRequestArtillery(Radio, Options[OptionIndex].OptionalInteger);
-            Interaction.Hide();
+            Interaction.PushMenu("DH_Engine.DHCommandMenu_ArtilleryDispersion", Radio, Index);
+            //PC.ServerRequestArtillery(Radio, Options[OptionIndex].OptionalInteger);
+            //Interaction.Hide();
         }
         else if (Error == ERROR_Cancellable)
         {

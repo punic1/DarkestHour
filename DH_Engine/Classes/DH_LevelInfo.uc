@@ -42,6 +42,21 @@ enum EWeather
     WEATHER_Snowy
 };
 
+enum EBatterySize
+{
+    BATTERY_Small,
+    BATTERY_Medium,
+    BATTERY_Large
+};
+
+enum EBarrageCount
+{
+    BARRAGE_1,
+    BARRAGE_2_to_3,
+    BARRAGE_4_to_6,
+    BARRAGE_6_to_8
+};
+
 struct SNationString
 {
     var string Germany, USA, Britain, Canada, USSR, Poland;
@@ -55,6 +70,10 @@ struct ArtilleryType
     var() int                   DelaySeconds;               // The amount of seconds it will take until the artillery actor is spawned.
     var() int                   Limit;                      // The amount of these types of artillery strikes that are available.
     var() int                   ConfirmIntervalSeconds;     // The amount of seconds it will take until another request can be confirmed.
+    var() EBatterySize          BatterySize;                // number of guns/tubes etc. in the battery
+    var() EBarrageCount         BarrageCount;               // number of barrages
+    //var() EDispersionType       DispersionType;             // small, medium, large (corresponding to say 10m, 20m, 50m radii)
+    var() int                   Interval;                   // number of seconds between barrages
 };
 var(Artillery) array<ArtilleryType> ArtilleryTypes;
 
@@ -129,6 +148,8 @@ simulated function bool IsConstructionRestricted(class<DHConstruction> Construct
 
     return false;
 }
+
+
 
 function bool IsArtilleryInitiallyAvailable(int ArtilleryTypeIndex)
 {
@@ -206,6 +227,24 @@ simulated static function DH_LevelInfo GetInstance(LevelInfo Level)
 
     return LI;
 }
+
+//Enfield: 
+simulated function bool GetArtilleryTypeInfo(int TeamIndex, class<DHArtillery> MyArtilleryClass, out ArtilleryType ArtilleryTypeInfo) 
+{
+    local int i;
+    
+    for (i = 0; i < ArtilleryTypes.length; ++i)
+    {
+        if (ArtilleryTypes[i].ArtilleryClass == MyArtilleryClass && ArtilleryTypes[i].TeamIndex == TeamIndex)
+        {
+            ArtilleryTypeInfo = ArtilleryTypes[i];
+            return true;
+        }        
+    }
+    
+    return false; 
+}
+
 
 defaultproperties
 {

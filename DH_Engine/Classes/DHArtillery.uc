@@ -13,6 +13,22 @@ var DHGameReplicationInfo.EArtilleryType              ArtilleryType;
 var localized protected string  MenuName;
 var Material                    MenuIcon;
 
+enum EDispersionType
+{
+    DISPERSION_Small,
+    DISPERSION_Medium,
+    DISPERSION_Large
+};
+
+struct DispersionType
+{
+    var int Radius;
+    var EDispersionType Type;
+};
+
+var array<DispersionType> DispersionTypes;
+
+
 var protected int               TeamIndex;
 var PlayerController            Requester;
 

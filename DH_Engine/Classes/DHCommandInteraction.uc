@@ -96,7 +96,7 @@ function CreateOptionTexRotators(DHCommandMenu Menu)
 
 // Pushes a new menu onto the top of the stack to be displayed immediately.
 // Allows the specification of an optional object to attach to the menu.
-function DHCommandMenu PushMenu(string ClassName, optional Object OptionalObject)
+function DHCommandMenu PushMenu(string ClassName, optional Object OptionalObject, optional int OptionalInteger)
 {
     local DHCommandMenu Menu, OldMenu;
     local class<DHCommandMenu> MenuClass;
@@ -114,6 +114,7 @@ function DHCommandMenu PushMenu(string ClassName, optional Object OptionalObject
 
     Menu.Interaction = self;
     Menu.MenuObject = OptionalObject;
+    Menu.MenuInteger = OptionalInteger;
     Menu.Setup();
 
     OldMenu = DHCommandMenu(Menus.Peek());

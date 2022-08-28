@@ -378,6 +378,21 @@ simulated function int GetTeamConstructionIndex(int TeamIndex, class<DHConstruct
     return -1;
 }
 
+simulated function DHSpawnPointBase GetMainSpawnPoint(int TeamIndex)
+{
+    local int i;
+
+    for (i = 0; i < arraycount(SpawnPoints); ++i)
+    {
+        if (SpawnPoints[i] != none && SpawnPoints[i].bMainSpawn && SpawnPoints[i].GetTeamIndex() == TeamIndex)
+        {
+            return SpawnPoints[i];
+        }
+    }
+
+    return none;
+}
+
 simulated function int GetTeamConstructionNextIncrementTimeSeconds(int TeamIndex, class<DHConstruction> ConstructionClass)
 {
     local int i;
@@ -2366,6 +2381,8 @@ function ResetTeamScores()
         }
     }
 }
+
+
 
 defaultproperties
 {
