@@ -13,6 +13,7 @@ defaultproperties
 {
     GameTypeName="Domination"
     bAreObjectiveSpawnsEnabled=true
+	bHasTemporarySpawnVehicles=true
     bAreRallyPointsEnabled=true
     bAreConstructionsEnabled=true
     bUseInfiniteReinforcements=true
