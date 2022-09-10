@@ -6,8 +6,6 @@
 class DHGUIMapComponent extends GUIPanel;
 
 const   SPAWN_POINTS_MAX =                  63; // Max spawn points total (make sure this matches GRI)
-const   SPAWN_VEHICLES_MAX =                8;  // Max spawn vehicles total (make sure this matches GRI)
-const   SQUAD_RALLY_POINTS_MAX =            16; // Max squad rally points (make sure this matches SRI)
 
 var automated   DHGUICheckBoxButton         b_SpawnPoints[SPAWN_POINTS_MAX];
 
@@ -151,12 +149,15 @@ function UpdateSpawnPoints(int TeamIndex, int RoleIndex, int VehiclePoolIndex, i
 
             if (GRI.SpawnPoints[i].CanSpawnWithParameters(GRI, TeamIndex, RoleIndex, SquadIndex, VehiclePoolIndex, true))
             {
+                // Spawn is acessible to spawn at, make the button clickable.
                 b_SpawnPoints[i].MenuStateChange(MSAT_Blurry);
             }
             else
             {
                 if (SpawnPointIndex != -1 && SpawnPointIndex == b_SpawnPoints[i].Tag)
                 {
+                    // This is our currently selected spawn, but it is inaccessible.
+                    // Deselect the spawn point.
                     SelectSpawnPoint(-1);
                 }
 
@@ -633,7 +634,7 @@ function ZoomIn()
     // Save the old zoom scale.
     OldZoomScale = Viewport.Max.X - Viewport.Min.X;
 
-    // Increment the zoom leve.
+    // Increment the zoom level.
     SetZoomLevel(ZoomLevel + 1);
 
     // Calculate the new zoom scale.

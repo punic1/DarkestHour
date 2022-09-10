@@ -136,6 +136,11 @@ var int RequiredSquadMembersToReceiveColoredSmoke;
 // (not) DUMB SHIT
 var     DHATGun             GunToRotate;
 
+var     DHBackpack          Backpack;
+var     class<DHBackpack>   BackpackClass;
+var     vector              BackpackLocationOffset;
+var     rotator             BackpackRotationOffset;
+
 replication
 {
     // Variables the server will replicate to clients when this actor is 1st replicated
@@ -152,7 +157,7 @@ replication
 
     // Variables the server will replicate to all clients
     reliable if (bNetDirty && Role == ROLE_Authority)
-        bOnFire, bCrouchMantle, MantleHeight, Radio;
+        bOnFire, bCrouchMantle, MantleHeight, Radio, BackpackClass;
 
     // Functions a client can call on the server
     reliable if (Role < ROLE_Authority)
@@ -291,6 +296,14 @@ simulated function PostNetReceive()
     if (Headgear == none && HeadgearClass != default.HeadgearClass && HeadgearClass != none)
     {
         Headgear = Spawn(HeadgearClass, self);
+    }
+
+    // Backpack
+    if (Backpack == none &&
+        BackpackClass != default.BackpackClass &&
+        BackpackClass != none)
+    {
+        Backpack = Spawn(BackpackClass, self);
     }
 
     if (AmmoPouches.Length == 0 && AmmoPouchClasses[0] != default.AmmoPouchClasses[0] && AmmoPouchClasses[0] != none)
@@ -474,6 +487,7 @@ function PossessedBy(Controller C)
             // Set classes for headgear & severed limbs, based on player's role
             // Any random headgear selection for role gets made here, when pawn first possessed
             HeadgearClass = RI.GetHeadgear();
+            BackpackClass = RI.GetBackpack(BackpackLocationOffset, BackpackRotationOffset);
             DetachedArmClass = RI.static.GetArmClass();
             DetachedLegClass = RI.static.GetLegClass();
 
@@ -484,6 +498,11 @@ function PossessedBy(Controller C)
                 if (HeadgearClass != none && HeadgearClass != default.HeadgearClass && Headgear == none)
                 {
                     Headgear = Spawn(HeadgearClass, self);
+                }
+
+                if (BackpackClass != none && BackpackClass != default.BackpackClass && Backpack == none)
+                {
+                    Backpack = Spawn(BackpackClass, self);
                 }
 
                 for (i = 0; i < arraycount(AmmoPouchClasses); ++i)
@@ -541,8 +560,11 @@ simulated function AssignInitialPose()
 // Modified to stop "accessed none" log errors on trying to play invalid vehicle DriveAnim
 simulated event AnimEnd(int Channel)
 {
-    local name  WeapAnim, PlayerAnim, Anim;
+    local DHWeaponAttachment WA;
+    local name  Anim;
     local float Frame, Rate;
+
+    WA = DHWeaponAttachment(WeaponAttachment);
 
     if (DrivenVehicle != none)
     {
@@ -569,30 +591,30 @@ simulated event AnimEnd(int Channel)
                 IdleTime = Level.TimeSeconds;
             }
 
-            if (WeaponAttachment != none)
+            if (WA != none)
             {
-                WeaponAttachment.GetAnimParams(0, Anim, Frame, Rate);
+                WA.GetAnimParams(0, Anim, Frame, Rate);
 
-                if (WeaponAttachment.bBayonetAttached)
+                if (WA.bBayonetAttached)
                 {
-                    if (WeaponAttachment.bOutOfAmmo && WeaponAttachment.WA_BayonetIdleEmpty != '' && Anim != WeaponAttachment.WA_BayonetReloadEmpty)
+                    if (WA.bOutOfAmmo && WA.WA_BayonetIdleEmpty != '' && Anim != WA.WA_BayonetReloadEmpty)
                     {
-                        WeaponAttachment.LoopAnim(WeaponAttachment.WA_BayonetIdleEmpty);
+                        WA.LoopAnim(WA.WA_BayonetIdleEmpty);
                     }
-                    else if (WeaponAttachment.WA_BayonetIdle != '')
+                    else if (WA.WA_BayonetIdle != '')
                     {
-                        WeaponAttachment.LoopAnim(WeaponAttachment.WA_BayonetIdle);
+                        WA.LoopAnim(WA.WA_BayonetIdle);
                     }
                 }
                 else
                 {
-                    if (WeaponAttachment.bOutOfAmmo && WeaponAttachment.WA_IdleEmpty != '' && Anim != WeaponAttachment.WA_ReloadEmpty)
+                    if (WA.bOutOfAmmo && WA.WA_IdleEmpty != '' && Anim != WA.WA_ReloadEmpty)
                     {
-                        WeaponAttachment.LoopAnim(WeaponAttachment.WA_IdleEmpty);
+                        WA.LoopAnim(WA.WA_IdleEmpty);
                     }
-                    else if (WeaponAttachment.WA_Idle != '')
+                    else if (WA.WA_Idle != '')
                     {
-                        WeaponAttachment.LoopAnim(WeaponAttachment.WA_Idle);
+                        WA.LoopAnim(WA.WA_Idle);
                     }
                 }
             }
@@ -611,90 +633,16 @@ simulated event AnimEnd(int Channel)
             WeaponState = GS_GrenadeHoldBack;
             IdleTime = Level.TimeSeconds;
         }
-        else if (WeaponState == GS_PreReload && WeaponAttachment != none)
+        else if (WeaponState == GS_PreReload && WA != none)
         {
-            AnimBlendParams(1, 1.0, 0.0, 0.2, SpineBone1);
             AnimBlendParams(1, 1.0, 0.0, 0.2, SpineBone2);
 
-            if (WeaponAttachment.bOutOfAmmo)
-            {
-                if (bIsCrawling)
-                {
-                    PlayerAnim = WeaponAttachment.PA_ProneReloadEmptyAnim;
-                }
-                else
-                {
-                    PlayerAnim = WeaponAttachment.PA_ReloadEmptyAnim;
-                }
-            }
-            else
-            {
-                if (bIsCrawling)
-                {
-                    PlayerAnim = WeaponAttachment.PA_ProneReloadAnim;
-                }
-                else
-                {
-                    PlayerAnim = WeaponAttachment.PA_ReloadAnim;
-                }
-            }
+            LoopAnim(WA.GetReloadPlayerAnim(self),, 0.0, 1);
 
-            LoopAnim(PlayerAnim,, 0.0, 1);
             WeaponState = GS_ReloadLooped;
             IdleTime = Level.TimeSeconds;
 
-            if (WeaponAttachment.bBayonetAttached)
-            {
-                if (bIsCrawling)
-                {
-                    if (WeaponAttachment.bOutOfAmmo && WeaponAttachment.WA_BayonetProneReloadEmpty != '')
-                    {
-                        WeapAnim = WeaponAttachment.WA_BayonetProneReloadEmpty;
-                    }
-                    else if (WeaponAttachment.WA_BayonetProneReload != '')
-                    {
-                        WeapAnim = WeaponAttachment.WA_BayonetProneReload;
-                    }
-                }
-                else
-                {
-                    if (WeaponAttachment.bOutOfAmmo && WeaponAttachment.WA_BayonetReloadEmpty != '')
-                    {
-                        WeapAnim = WeaponAttachment.WA_BayonetReloadEmpty;
-                    }
-                    else if (WeaponAttachment.WA_BayonetReload != '')
-                    {
-                        WeapAnim = WeaponAttachment.WA_BayonetReload;
-                    }
-                }
-            }
-            else
-            {
-                if (bIsCrawling)
-                {
-                    if (WeaponAttachment.bOutOfAmmo && WeaponAttachment.WA_ProneReloadEmpty != '')
-                    {
-                        WeapAnim = WeaponAttachment.WA_ProneReloadEmpty;
-                    }
-                    else if (WeaponAttachment.WA_ProneReload != '')
-                    {
-                        WeapAnim = WeaponAttachment.WA_ProneReload;
-                    }
-                }
-                else
-                {
-                    if (WeaponAttachment.bOutOfAmmo && WeaponAttachment.WA_ReloadEmpty != '')
-                    {
-                        WeapAnim = WeaponAttachment.WA_ReloadEmpty;
-                    }
-                    else
-                    {
-                        WeapAnim = WeaponAttachment.WA_Reload;
-                    }
-                }
-            }
-
-            WeaponAttachment.LoopAnim(WeapAnim);
+            WA.LoopAnim(WA.GetReloadWeaponAnim(self));
         }
         else if (WeaponState != GS_ReloadLooped && WeaponState != GS_GrenadeHoldBack && WeaponState != GS_FireLooped)
         {
@@ -3320,10 +3268,13 @@ function CreateInventory(string InventoryClassName)
     }
 }
 
-// New function used to give all players a shovel (the appropriate shovel for their nationality)
+// New function used to give all non-squad leaders a shovel (the appropriate shovel for their nationality)
 function CheckGiveShovel()
 {
     local DHGameReplicationInfo GRI;
+    local DHPlayerReplicationInfo PRI;
+
+    PRI = DHPlayerReplicationInfo(PlayerReplicationInfo);
 
     if (ShovelClassName != "" && Level.Game != none)
     {
@@ -3502,7 +3453,7 @@ function ServerChangedWeapon(Weapon OldWeapon, Weapon NewWeapon)
                 // So we can keep the existing BackAttachment actor, which is already attached, & simply call InitFor() on it
                 if (AttachedBackItem == none)
                 {
-                    AttachedBackItem = Spawn(class'BackAttachment', self);
+                    AttachedBackItem = Spawn(class'DHBackAttachment', self);
 
                     if (AttachedBackItem != none)
                     {
@@ -3710,7 +3661,7 @@ state PutWeaponAway
                 // So we can keep the existing BackAttachment actor, which is already attached, & simply call InitFor() on it
                 if (AttachedBackItem == none)
                 {
-                    AttachedBackItem = Spawn(class'BackAttachment', self);
+                    AttachedBackItem = Spawn(class'DHBackAttachment', self);
 
                     if (AttachedBackItem != none)
                     {
@@ -4016,6 +3967,49 @@ simulated function PlayAssistedReload()
 
         WeaponState = GS_ReloadSingle;
     }
+}
+
+// Play a standard reload on the client
+simulated function PlayStandardReload()
+{
+    local DHWeaponAttachment WA;
+    local name PlayerAnim;
+    local name ChannelRootBone;
+    local bool bGlobalPose;
+
+    WA = DHWeaponAttachment(WeaponAttachment);
+
+    if (WA == none)
+    {
+        return;
+    }
+
+    if (WA.bStaticReload)
+    {
+        ChannelRootBone = '';
+        bGlobalPose = true;
+    }
+    else
+    {
+        if (bIsCrawling)
+        {
+            ChannelRootBone = FireRootBone;
+        }
+        else
+        {
+            ChannelRootBone = SpineBone2;
+        }
+    }
+
+    PlayerAnim = WA.GetReloadPlayerAnim(self);
+
+    AnimBlendParams(1, 1.0, 0.0, 0.2, ChannelRootBone, bGlobalPose);
+    PlayAnim(PlayerAnim,, 0.1, 1);
+
+    WA.PlayAnim(WA.GetReloadWeaponAnim(self),, 0.1);
+
+    AnimBlendTime = GetAnimDuration(PlayerAnim, 1.0) + 0.1;
+    WeaponState = GS_ReloadSingle;
 }
 
 // Called on the server. Sends a message to the client to let them know to play the Mantle animation
@@ -5508,6 +5502,11 @@ simulated function StartBurnFX()
     if (Headgear != none)
     {
         Headgear.SetOverlayMaterial(BurnedHeadgearOverlayMaterial, 999.0, true);
+    }
+
+    if (Backpack != none)
+    {
+        Backpack.SetOverlayMaterial(BurningOverlayMaterial, 999.0, true);
     }
 
     for (i = 0; i < AmmoPouches.Length; ++i)
@@ -7269,36 +7268,6 @@ function bool UseSupplies(int SupplyCost, optional out array<DHConstructionSuppl
     return true;
 }
 
-// Attempts to refund supplies to nearby supply attachments. Returns the total
-// amount of supplies that were actually refunded.
-function int RefundSupplies(int SupplyCount)
-{
-    local int i, SuppliesToRefund, SuppliesRefunded;
-    local array<DHConstructionSupplyAttachment> Attachments;
-    local UComparator AttachmentComparator;
-
-    // Sort the supply attachments by priority.
-    Attachments = TouchingSupplyAttachments;
-    AttachmentComparator = new class'UComparator';
-    AttachmentComparator.CompareFunction = class'DHConstructionSupplyAttachment'.static.CompareFunction;
-    class'USort'.static.Sort(Attachments, AttachmentComparator);
-
-    for (i = 0; i < Attachments.Length; ++i)
-    {
-        if (SupplyCount == 0)
-        {
-            break;
-        }
-
-        SuppliesToRefund = Min(SupplyCount, Attachments[i].SupplyCountMax - Attachments[i].GetSupplyCount());
-        Attachments[i].SetSupplyCount(Attachments[i].GetSupplyCount() + SuppliesToRefund);
-        SuppliesRefunded += SuppliesToRefund;
-        SupplyCount -= SuppliesToRefund;
-    }
-
-    return SuppliesRefunded;
-}
-
 simulated function class<DHVoicePack> GetVoicePack()
 {
     return class<DHVoicePack>(VoiceClass);
@@ -7494,6 +7463,36 @@ exec function BigHead(float V)
     SetHeadScale(V);
 }
 
+simulated function bool CanBuildWithShovel()
+{
+    local DHPlayerReplicationInfo PRI;
+
+    PRI = DHPlayerReplicationInfo(PlayerReplicationInfo);
+
+    return Level.NetMode == NM_Standalone || !PRI.IsSquadLeader() || HasSquadmatesWithinDistance(50.0);
+}
+
+simulated function bool HasSquadmatesWithinDistance(float DistanceMeters)
+{
+    local DHPlayer PC;
+    local Pawn P;
+    local DHPlayerReplicationInfo PRI, OtherPRI;
+    
+    PRI = DHPlayerReplicationInfo(PlayerReplicationInfo);
+
+    foreach RadiusActors(class'Pawn', P, class'DHUnits'.static.MetersToUnreal(DistanceMeters))
+    {
+        OtherPRI = DHPlayerReplicationInfo(P.PlayerReplicationInfo);
+
+        if (PRI != OtherPRI && PRI.Team.TeamIndex == OtherPRI.Team.TeamIndex && PRI.SquadIndex == OtherPRI.SquadIndex)
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 defaultproperties
 {
     // General class & interaction stuff
@@ -7504,6 +7503,7 @@ defaultproperties
     bAutoTraceNotify=true
     bCanAutoTraceSelect=true
     HeadgearClass=class'ROEngine.ROHeadgear' // start with dummy abstract classes so server changes to either a spawnable class or to none; then net client can detect when its been set
+    BackpackClass=class'DH_Engine.DHBackpack'
     AmmoPouchClasses(0)=class'ROEngine.ROAmmoPouch'
     bCanPickupWeapons=true
 

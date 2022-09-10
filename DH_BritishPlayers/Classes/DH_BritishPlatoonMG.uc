@@ -3,9 +3,4 @@
 // Darklight Games (c) 2008-2022
 //==============================================================================
 
-class DH_BritishPlatoonMG extends DHCWMachineGunnerRoles;
-
-defaultproperties
-{
-    RolePawns(0)=(PawnClass=class'DH_BritishPlayers.DH_BritishPawn',Weight=1.0)
-}
+class DH_BritishPlatoonMG extends DHDeprecated;

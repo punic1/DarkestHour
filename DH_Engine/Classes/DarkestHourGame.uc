@@ -117,6 +117,7 @@ enum EArtilleryResponseType
     RESPONSE_BadLocation,
     RESPONSE_NoTarget,
     RESPONSE_NotQualified,
+    RESPONSE_NotEnoughSquadMembers,
     RESPONSE_TooSoon,
     RESPONSE_BadRequest
 };
@@ -2782,6 +2783,8 @@ state RoundInPlay
 
         UpdateArtilleryAvailability();
         UpdateAllPlayerScores();
+
+        SquadReplicationInfo.ResetSquadNextRallyPointTimes();
     }
 
     // Modified for DHObjectives
@@ -3110,9 +3113,6 @@ state RoundInPlay
                 TeamAttritionCounter[i] = TeamAttritionCounter[i] % 1.0;
             }
         }
-
-        // Update munition percentages (this will update both team's munitions and set them in GRI)
-        UpdateMunitionPercentages();
 
         // Go through both teams and update artillery availability
         for (i = 0; i < 2; ++i)
@@ -3610,7 +3610,7 @@ exec function DebugSetRoleLimit(int Team, int Index, int NewLimit)
                                             PC.GetRoleInfo() == GRI.DHAxisRoles[Index]))
             {
                 DHPlayerReplicationInfo(PC.PlayerReplicationInfo).RoleInfo = none;
-                PC.bSpawnPointInvalidated = true;
+                PC.bSpawnParametersInvalidated = true;
 
                 if (i >= RoleCount - NewLimit)
                 {
@@ -4332,7 +4332,7 @@ function PlayerLeftTeam(PlayerController P)
         PC.bWeaponsSelected = false;
         PC.SavedArtilleryCoords = vect(0.0, 0.0, 0.0);
         PC.SpawnPointIndex = -1;
-        PC.bSpawnPointInvalidated = true;
+        PC.bSpawnParametersInvalidated = true;
 
         ClearSavedRequestsAndRallyPoints(PC, false);
     }
@@ -4457,37 +4457,6 @@ function ChangeWeapons(Controller aPlayer, int Primary, int Secondary, int Grena
     {
         PC.DHPrimaryWeapon = PC.PrimaryWeapon;
         PC.DHSecondaryWeapon = PC.SecondaryWeapon;
-    }
-}
-
-function UpdateMunitionPercentages()
-{
-    local int i;
-    local float MunitionDifference, ElapsedRatio;
-
-    if (GRI == none)
-    {
-        return;
-    }
-
-    // Calculate and set the Munition Percentages for each team
-    for (i = 0; i < 2; ++i)
-    {
-        ElapsedRatio = FClamp(((GRI.ElapsedTime - GRI.RoundStartTime) / 60.0) / 60.0, 0.0, 1.0);
-
-        // If Base > Final (aka ammo goes down)
-        if (DHLevelInfo.BaseMunitionPercentages[i] > DHLevelInfo.FinalMunitionPercentages[i])
-        {
-            MunitionDifference = DHLevelInfo.BaseMunitionPercentages[i] - DHLevelInfo.FinalMunitionPercentages[i];
-
-            GRI.TeamMunitionPercentages[i] = DHLevelInfo.BaseMunitionPercentages[i] - (MunitionDifference * ElapsedRatio);
-        }
-        else // Ammo is going up over time
-        {
-            MunitionDifference = DHLevelInfo.FinalMunitionPercentages[i] - DHLevelInfo.BaseMunitionPercentages[i];
-
-            GRI.TeamMunitionPercentages[i] = DHLevelInfo.BaseMunitionPercentages[i] + (MunitionDifference * ElapsedRatio);
-        }
     }
 }
 
@@ -5790,10 +5759,15 @@ function ArtilleryResponse RequestArtillery(DHArtilleryRequest Request)
         // This type of artillery cannot be requested yet.
         Response.Type = RESPONSE_TooSoon;
     }
-    else if (!DHLevelInfo.ArtilleryTypes[Request.ArtilleryTypeIndex].ArtilleryClass.static.CanBeRequestedBy(Request.Sender))
+    else if (!DHLevelInfo.ArtilleryTypes[Request.ArtilleryTypeIndex].ArtilleryClass.static.HasQualificationToRequest(Request.Sender))
     {
         // The requesting player is unqualified to request this artillery.
         Response.Type = RESPONSE_NotQualified;
+    }
+    else if (!DHLevelInfo.ArtilleryTypes[Request.ArtilleryTypeIndex].ArtilleryClass.static.HasEnoughSquadMembersToRequest(Request.Sender))
+    {
+        // The requesting player doesn't have enough members in his squad.
+        Response.Type = RESPONSE_NotEnoughSquadMembers;
     }
     else if (Request.Location == vect(0,0,0))
     {
@@ -5954,9 +5928,9 @@ defaultproperties
     ServerLocation="Unspecified"
 
     Begin Object Class=UVersion Name=VersionObject
-        Major=10
-        Minor=5
-        Patch=2
+        Major=11
+        Minor=0
+        Patch=0
         Prerelease=""
     End Object
     Version=VersionObject

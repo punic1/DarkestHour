@@ -5,7 +5,7 @@
 
 class DHGameReplicationInfo extends ROGameReplicationInfo;
 
-const RADIOS_MAX = 10;
+const RADIOS_MAX = 32;
 const ROLES_MAX = 16;
 const MORTAR_TARGETS_MAX = 2;
 const VEHICLE_POOLS_MAX = 32;
@@ -57,6 +57,7 @@ enum EArtilleryTypeError
     ERROR_Unavailable,
     ERROR_Exhausted,
     ERROR_Unqualified,
+    ERROR_NotEnoughSquadMembers,
     ERROR_Cooldown,
     ERROR_Ongoing,
     ERROR_SquadTooSmall,
@@ -890,6 +891,30 @@ simulated function DHSpawnPointBase GetSpawnPoint(int SpawnPointIndex)
     return SpawnPoints[SpawnPointIndex];
 }
 
+simulated function DHSpawnPointBase GetMostDesirableSpawnPoint(DHPlayer PC, optional out int OutDesirability)
+{
+    local int i, Desirability;
+    local DHSpawnPointBase SP;
+
+    OutDesirability = -MaxInt;
+
+    for (i = 0; i < arraycount(SpawnPoints); ++i)
+    {
+        if (SpawnPoints[i] != none && SpawnPoints[i].IsVisibleToPlayer(PC)) // TODO: should probably check if we can even spawn here
+        {
+            Desirability = SpawnPoints[i].GetDesirability();
+
+            if (Desirability > OutDesirability)
+            {
+                SP = SpawnPoints[i];
+                OutDesirability = Desirability;
+            }
+        }
+    }
+
+    return SP;
+}
+
 simulated function bool IsRallyPointIndexValid(DHPlayer PC, byte RallyPointIndex, int TeamIndex)
 {
     local DHSpawnPoint_SquadRallyPoint RP;
@@ -995,7 +1020,7 @@ function SetVehiclePoolIsActive(byte VehiclePoolIndex, bool bIsActive)
             if (PC != none && PC.VehiclePoolIndex == VehiclePoolIndex)
             {
                 PC.VehiclePoolIndex = -1;
-                PC.bSpawnPointInvalidated = true;
+                PC.bSpawnParametersInvalidated = true;
             }
         }
     }
@@ -1968,6 +1993,7 @@ simulated function EArtilleryTypeError GetArtilleryTypeError(DHPlayer PC, int Ar
 {
     local ArtilleryTypeInfo ATI;
     local DH_LevelInfo LI;
+    local class<DHArtillery> ArtilleryClass;
 
     LI = class'DH_LevelInfo'.static.GetInstance(Level);
 
@@ -1980,9 +2006,16 @@ simulated function EArtilleryTypeError GetArtilleryTypeError(DHPlayer PC, int Ar
         return ERROR_Fatal;
     }
 
-    if (!LI.ArtilleryTypes[ArtilleryTypeIndex].ArtilleryClass.static.CanBeRequestedBy(PC))
+    ArtilleryClass = LI.ArtilleryTypes[ArtilleryTypeIndex].ArtilleryClass;
+
+    if (!ArtilleryClass.static.HasQualificationToRequest(PC))
     {
         return ERROR_Unqualified;
+    }
+
+    if (!ArtilleryClass.static.HasEnoughSquadMembersToRequest(PC))
+    {
+        return ERROR_NotEnoughSquadMembers;
     }
 
     ATI = ArtilleryTypeInfos[ArtilleryTypeIndex];
@@ -2397,4 +2430,3 @@ defaultproperties
     DangerZoneNeutral=128
     DangerZoneBalance=128
 }
-
