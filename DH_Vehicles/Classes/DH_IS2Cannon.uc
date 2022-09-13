@@ -1,6 +1,6 @@
 //==============================================================================
 // Darkest Hour: Europe '44-'45
-// Darklight Games (c) 2008-2021
+// Darklight Games (c) 2008-2022
 //==============================================================================
 
 class DH_IS2Cannon extends DHVehicleCannon;
@@ -11,10 +11,10 @@ defaultproperties
     Mesh=SkeletalMesh'DH_IS2_anm.IS2-turret_ext'
     Skins(0)=Texture'allies_vehicles_tex.ext_vehicles.IS2_ext'
     Skins(1)=Texture'allies_vehicles_tex.int_vehicles.IS2_int'
-    HighDetailOverlay=shader'allies_vehicles_tex.int_vehicles.IS2_int_s'
+    HighDetailOverlay=Shader'allies_vehicles_tex.int_vehicles.IS2_int_s'
     bUseHighDetailOverlayIndex=true
     HighDetailOverlayIndex=1
-    CollisionStaticMesh=StaticMesh'DH_Soviet_vehicles_stc.IS2.IS2_turret_coll'
+    CollisionStaticMeshes(0)=(CollisionStaticMesh=StaticMesh'DH_Soviet_vehicles_stc.IS2.IS2_turret_coll')
 
     // Turret armor - JS-2 Model 1943
     FrontArmorFactor=10.0
@@ -55,11 +55,11 @@ defaultproperties
     SecondarySpread=0.002
 
     // Coaxial MG ammo
-    AltFireProjectileClass=class'DH_Weapons.DH_DP28Bullet'
+    AltFireProjectileClass=class'DH_Weapons.DH_DP27Bullet'
     InitialAltAmmo=63
     NumMGMags=15
-    AltFireInterval=0.1
-    TracerProjectileClass=class'DH_Weapons.DH_DP28TracerBullet'
+    AltFireInterval=0.105
+    TracerProjectileClass=class'DH_Weapons.DH_DP27TracerBullet'
     TracerFrequency=5
     HudAltAmmoIcon=Texture'InterfaceArt_tex.HUD.dp27_ammo'
 

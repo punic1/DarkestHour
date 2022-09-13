@@ -1,6 +1,6 @@
 //==============================================================================
 // Darkest Hour: Europe '44-'45
-// Darklight Games (c) 2008-2021
+// Darklight Games (c) 2008-2022
 //==============================================================================
 
 class DHProjectileFire extends DHWeaponFire;
@@ -193,6 +193,11 @@ simulated function DisplayDebug(Canvas Canvas, out float YL, out float YPos)
 simulated function bool IsPlayerHipFiring()
 {
     return !(Weapon != none && Weapon.bUsingSights) && !(Instigator != none && Instigator.bBipodDeployed);
+}
+
+simulated function bool IsInstigatorBipodDeployed()
+{
+    return Instigator != none && Instigator.bBipodDeployed;   
 }
 
 function CalcSpreadModifiers()

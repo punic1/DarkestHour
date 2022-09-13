@@ -1,9 +1,10 @@
 //==============================================================================
 // Darkest Hour: Europe '44-'45
-// Darklight Games (c) 2008-2021
+// Darklight Games (c) 2008-2022
 //==============================================================================
 
-class DHMapMarker_Enemy_Vehicle extends DHMapMarker_Enemy;
+class DHMapMarker_Enemy_Vehicle extends DHMapMarker_Enemy
+    abstract;
 
 defaultproperties
 {

@@ -1,6 +1,6 @@
 //==============================================================================
 // Darkest Hour: Europe '44-'45
-// Darklight Games (c) 2008-2021
+// Darklight Games (c) 2008-2022
 //==============================================================================
 // This interaction displays configuable radial menus (DHCommandMenu) with up to
 // 8 different options.
@@ -12,7 +12,7 @@ class DHCommandInteraction extends DHInteraction
 const FADE_DURATION = 0.25;
 const INNER_RADIUS = 16.0;
 const OUTER_RADIUS = 32.0;
-const Tau = 6.28318530718;
+const TAU = 6.28318530718;
 
 var Stack_Object        Menus;
 
@@ -35,6 +35,12 @@ var color               SubmenuColor;
 
 var DHGameReplicationInfo GRI;
 
+var bool                bShouldHideOnLeftMouseRelease;
+
+var Pawn                InstigatorPawn;
+
+delegate                OnHidden();
+
 event Initialized()
 {
     super.Initialized();
@@ -42,6 +48,7 @@ event Initialized()
     Menus = new class'Stack_Object';
 
     GRI = DHGameReplicationInfo(ViewportOwner.Actor.GameReplicationInfo);
+    InstigatorPawn = ViewportOwner.Actor.Pawn;
 
     GotoState('FadeIn');
 }
@@ -49,6 +56,11 @@ event Initialized()
 function Hide()
 {
     GotoState('FadeOut');
+}
+
+function bool IsHiding()
+{
+    return IsInState('FadeOut');
 }
 
 // Programmatically create the materials used for each option.
@@ -186,12 +198,7 @@ state FadeOut
 
         if (MenuAlpha == 0.0)
         {
-            while (!Menus.IsEmpty())
-            {
-                PopMenu();
-            }
-
-            ViewportOwner.InteractionMaster.RemoveInteraction(self);
+            TearDown();
         }
     }
 
@@ -199,6 +206,18 @@ state FadeOut
     {
         return false;
     }
+}
+
+function TearDown()
+{
+    while (!Menus.IsEmpty())
+    {
+        PopMenu();
+    }
+
+    ViewportOwner.InteractionMaster.RemoveInteraction(self);
+
+    OnHidden();
 }
 
 function Tick(float DeltaTime)
@@ -212,10 +231,15 @@ function Tick(float DeltaTime)
 
     Menu = DHCommandMenu(Menus.Peek());
 
-    if (PC == none || PC.Pawn == none || PC.IsDead() || Menu == none || Menu.ShouldHideMenu())
+    if (PC == none || PC.Pawn == none || PC.IsDead() || Menu == none || Menu.ShouldHideMenu() || PC.Pawn != InstigatorPawn)
     {
         Hide();
         return;
+    }
+
+    if (Menu.bShouldTick)
+    {
+        Menu.Tick();
     }
 
     // Clamp cursor
@@ -226,13 +250,13 @@ function Tick(float DeltaTime)
     if (Menu.Options.Length > 0 && Cursor != vect(0, 0, 0))
     {
         // Calculated the selected index
-        ArcLength = Tau / Menu.SlotCount;
+        ArcLength = TAU / Menu.SlotCount;
         Theta = Atan(Cursor.Y, Cursor.X) + (ArcLength / 2);
         Theta += class'UUnits'.static.DegreesToRadians(90);
 
         if (Theta < 0)
         {
-            Theta = Tau + Theta;
+            Theta = TAU + Theta;
         }
 
         if (VSize(Cursor) < INNER_RADIUS)
@@ -242,7 +266,7 @@ function Tick(float DeltaTime)
         }
         else
         {
-            SelectedIndex = Menu.GetOptionIndexFromSlotIndex(Menu.SlotCount * (Theta / Tau));
+            SelectedIndex = Menu.GetOptionIndexFromSlotIndex(Menu.SlotCount * (Theta / TAU));
         }
     }
     else
@@ -280,14 +304,15 @@ function PostRender(Canvas C)
         return;
     }
 
-    CenterX = (C.ClipX / 2);
-    CenterY = (C.ClipY / 2);
+    CenterX = C.ClipX / 2;
+    CenterY = C.ClipY / 2;
 
     // TODO: get rid of magic numbers
     C.SetPos(CenterX - 8, CenterY - 8);
 
     // Draw menu crosshair
     C.DrawColor = class'UColor'.default.White;
+    C.DrawColor.A = byte(255 * MenuAlpha);
     C.DrawTile(Material'DH_InterfaceArt_tex.Communication.menu_crosshair', 16, 16, 0, 0, 16, 16);
 
     // Draw outer "beauty" ring
@@ -305,7 +330,7 @@ function PostRender(Canvas C)
         return;
     }
 
-    ArcLength = Tau / Menu.SlotCount;
+    ArcLength = TAU / Menu.SlotCount;
 
     // Draw all the options.
     for (i = 0; i < Menu.SlotCount; ++i)
@@ -325,7 +350,7 @@ function PostRender(Canvas C)
 
             if (SelectedIndex == OptionIndex)
             {
-                C.DrawColor.A = byte(255 * (MenuAlpha));
+                C.DrawColor.A = byte(255 * MenuAlpha);
             }
             else
             {
@@ -399,16 +424,22 @@ function PostRender(Canvas C)
         C.SetPos(CenterX - (XL / 2), CenterY + 32);
         C.DrawText(ORI.OptionName);
 
-        // Draw subject text
-        C.TextSize(ORI.InfoText, XL, YL);
-        C.DrawColor = class'UColor'.default.Black;
-        C.DrawColor.A = byte(255 * MenuAlpha);
-        C.SetPos(CenterX - (XL / 2) + 1, CenterY - 31 -  YL);
-        C.DrawText(ORI.InfoText);
-        C.DrawColor = ORI.InfoColor;
-        C.DrawColor.A = byte(255 * MenuAlpha);
-        C.SetPos(CenterX - (XL / 2), CenterY - 32 - YL);
-        C.DrawText(ORI.InfoText);
+        // Draw info text
+        for (i = 0; i < arraycount(ORI.InfoText); ++i)
+        {
+            if (ORI.InfoText[i] != "")
+            {
+                C.TextSize(ORI.InfoText[i], XL, YL);
+                C.DrawColor = class'UColor'.default.Black;
+                C.DrawColor.A = byte(255 * MenuAlpha);
+                C.SetPos(CenterX - (XL / 2) + 1, CenterY - 31 -  (i + 1) * YL);
+                C.DrawText(ORI.InfoText[i]);
+                C.DrawColor = ORI.InfoColor;
+                C.DrawColor.A = byte(255 * MenuAlpha);
+                C.SetPos(CenterX - (XL / 2), CenterY - 32 - (i + 1) * YL);
+                C.DrawText(ORI.InfoText[i]);
+            }
+        }
 
         // Draw action icon
         if (ORI.InfoIcon != none)
@@ -416,7 +447,7 @@ function PostRender(Canvas C)
             AspectRatio = ORI.InfoIcon.MaterialUSize() / ORI.InfoIcon.MaterialVSize();
 
             YL2 = 32;
-            XL2 = (YL2 * AspectRatio);
+            XL2 = YL2 * AspectRatio;
 
             C.DrawColor = ORI.InfoColor;
             C.DrawColor.A = byte(255 * MenuAlpha);
@@ -446,8 +477,7 @@ function bool KeyEvent(out EInputKey Key, out EInputAction Action, float Delta)
 {
     local DHPlayer PC;
     local DHPlayerReplicationInfo PRI;
-    local vector TraceStart, TraceEnd, HitLocation, HitNormal;
-    local Actor A, HitActor;
+    local vector HitLocation, HitNormal;
 
     PC = DHPlayer(ViewportOwner.Actor);
 
@@ -478,6 +508,25 @@ function bool KeyEvent(out EInputKey Key, out EInputAction Action, float Delta)
                     break;
             }
             break;
+        case IST_Release:
+            switch (Key)
+            {
+                case IK_LeftMouse:
+                    if (bShouldHideOnLeftMouseRelease)
+                    {
+                        if (SelectedIndex >= 0)
+                        {
+                            PC.GetEyeTraceLocation(HitLocation, HitNormal);
+                            OnSelect(SelectedIndex, HitLocation);
+                        }
+
+                        Hide();
+
+                        return false;
+                    }
+                    break;
+            }
+            break;
         case IST_Press:
             switch (Key)
             {
@@ -486,38 +535,13 @@ function bool KeyEvent(out EInputKey Key, out EInputAction Action, float Delta)
                 // guessing that 99.9% of players use left mouse as the fire
                 // key, so this will do for now.
                 case IK_LeftMouse:
-                    TraceStart = PC.CalcViewLocation;
-                    TraceEnd = TraceStart + (vector(PC.CalcViewRotation) * PC.Pawn.Region.Zone.DistanceFogEnd);
-
-                    foreach PC.TraceActors(class'Actor', A, HitLocation, HitNormal, TraceEnd, TraceStart)
-                    {
-                        if (A == PC.Pawn ||
-                            A.IsA('ROBulletWhipAttachment') ||
-                            A.IsA('Volume'))
-                        {
-                            continue;
-                        }
-
-                        HitActor = A;
-
-                        break;
-                    }
-
-                    if (HitActor == none)
-                    {
-                        HitLocation = TraceEnd;
-                    }
-
+                    PC.GetEyeTraceLocation(HitLocation, HitNormal);
                     OnSelect(SelectedIndex, HitLocation);
 
                     return true;
                 case IK_RightMouse:
                     PlaySound(Sound'ROMenuSounds.CharFade');
-
-                    if (Menus.Size() > 1)
-                    {
-                        PopMenu();
-                    }
+                    PopMenu();
                     return true;
                 default:
                     break;

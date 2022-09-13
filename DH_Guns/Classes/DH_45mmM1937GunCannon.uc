@@ -1,6 +1,6 @@
 //==============================================================================
 // Darkest Hour: Europe '44-'45
-// Darklight Games (c) 2008-2021
+// Darklight Games (c) 2008-2022
 //==============================================================================
 
 class DH_45mmM1937GunCannon extends DHATGunCannon;
@@ -10,7 +10,7 @@ defaultproperties
     // Cannon mesh
     Mesh=SkeletalMesh'DH_45mm_anm.45mmM1937_gun'
     Skins(0)=Texture'DH_Artillery_tex.45mmATGun.45mmATgun'
-    CollisionStaticMesh=StaticMesh'DH_Artillery_stc.45mmGun.45mmGun_gun_collision'
+    CollisionStaticMeshes(0)=(CollisionStaticMesh=StaticMesh'DH_Artillery_stc.45mmGun.45mmGun_gun_collision')
 
     // Turret movement
     RotationsPerSecond=0.05

@@ -1,6 +1,6 @@
 //==============================================================================
 // Darkest Hour: Europe '44-'45
-// Darklight Games (c) 2008-2021
+// Darklight Games (c) 2008-2022
 //==============================================================================
 
 class DHMapIconAttachment_Vehicle_Supply extends DHMapIconAttachment_Vehicle
@@ -32,6 +32,7 @@ simulated function Material GetIconMaterial(DHPlayer PC)
         }
 
         TexRotator(RotatedMaterial).Rotation.Yaw = GetMapIconYaw(DHGameReplicationInfo(PC.GameReplicationInfo));
+
         return RotatedMaterial;
     }
 }

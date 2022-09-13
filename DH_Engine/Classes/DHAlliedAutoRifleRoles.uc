@@ -1,6 +1,6 @@
 //==============================================================================
 // Darkest Hour: Europe '44-'45
-// Darklight Games (c) 2008-2021
+// Darklight Games (c) 2008-2022
 //==============================================================================
 
 class DHAlliedAutoRifleRoles extends DHAlliedRoles
@@ -14,5 +14,7 @@ defaultproperties
     Article="a "
     PluralName="Light Machine-Gunners"
     Limit=2
+    bCanCarryExtraAmmo=false
     AddedRoleRespawnTime=5
+    bCanBeSquadLeader=false
 }

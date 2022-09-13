@@ -1,6 +1,6 @@
 //==============================================================================
 // Darkest Hour: Europe '44-'45
-// Darklight Games (c) 2008-2021
+// Darklight Games (c) 2008-2022
 //==============================================================================
 
 class DH_KV1sCannon extends DH_T3476Cannon; // different turret but shares much in common with T34/76 cannon class
@@ -12,7 +12,7 @@ defaultproperties
     Skins(0)=Texture'allies_vehicles_tex.ext_vehicles.KV1_ext'
     Skins(1)=Texture'allies_vehicles_tex.int_vehicles.kv1_int'
     HighDetailOverlay=Shader'allies_vehicles_tex.int_vehicles.kv1_int_s'
-    CollisionStaticMesh=StaticMesh'DH_Soviet_vehicles_stc.KV1S.KV1S_turret_collision'
+    CollisionStaticMeshes(0)=(CollisionStaticMesh=StaticMesh'DH_Soviet_vehicles_stc.KV1S.KV1S_turret_collision')
 
     // Turret armor
     FrontArmorFactor=8.2

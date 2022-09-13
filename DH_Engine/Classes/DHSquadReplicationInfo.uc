@@ -1,6 +1,6 @@
 //==============================================================================
 // Darkest Hour: Europe '44-'45
-// Darklight Games (c) 2008-2021
+// Darklight Games (c) 2008-2022
 //==============================================================================
 
 class DHSquadReplicationInfo extends ReplicationInfo;
@@ -56,8 +56,6 @@ var globalconfig private int        AxisSquadSize;
 var globalconfig private int        AlliesSquadSize;
 
 var class<LocalMessage>             SquadMessageClass;
-
-var TreeMap_string_int              InvitationExpirations;
 
 var int                             NextRallyPointInterval;
 var bool                            bAreRallyPointsEnabled;
@@ -144,9 +142,7 @@ struct RallyPointPlacementResult
 replication
 {
     reliable if (bNetDirty && Role == ROLE_Authority)
-        AxisSquadSize, AlliesSquadSize;
-
-    reliable if (bNetDirty && Role == ROLE_Authority)
+        AxisSquadSize, AlliesSquadSize,
         AxisMembers, AxisNames, AxisLocked, AlliesMembers, AlliesNames,
         AlliesLocked, bAreRallyPointsEnabled, RallyPoints,
         AxisNextRallyPointTimes, AlliesNextRallyPointTimes;
@@ -160,9 +156,6 @@ function PostBeginPlay()
 
     if (Role == ROLE_Authority)
     {
-        // TODO: make sure invitations can't be sent so damned frequently!
-        InvitationExpirations = new class'TreeMap_string_int';
-
         SetTeamSquadSize(AXIS_TEAM_INDEX, AxisSquadSize);
         SetTeamSquadSize(ALLIES_TEAM_INDEX, AlliesSquadSize);
 
@@ -227,9 +220,8 @@ function Timer()
             continue;
         }
 
-        // Squad leaders and their assistants should know where their teams'
-        // other squad leaders are.
-        if (PRI.IsSLorASL())
+        // SLs, ASLs and radio operators should know where all squad leaders are.
+        if (PRI.IsSLorASL() || PRI.IsRadioman())
         {
             for (i = 0; i < GetTeamSquadLimit(PC.GetTeamNum()); ++i)
             {
@@ -424,6 +416,21 @@ protected function ResetPlayerSquadInfo(DHPlayerReplicationInfo PRI)
     }
 }
 
+function ResetSquadNextRallyPointTimes()
+{
+    local int i;
+
+    for (i = 0; i < arraycount(AxisNextRallyPointTimes); ++i)
+    {
+        AxisNextRallyPointTimes[i] = 0.0;
+    }
+
+    for (i = 0; i < arraycount(AlliesNextRallyPointTimes); ++i)
+    {
+        AlliesNextRallyPointTimes[i] = 0.0;
+    }
+}
+
 function ResetSquadInfo()
 {
     local int i;
@@ -456,28 +463,34 @@ function ResetSquadInfo()
     }
 
     for (i = 0; i < arraycount(AxisAssistantSquadLeaderMemberIndices); ++i)
+    {
         AxisAssistantSquadLeaderMemberIndices[i] = -1;
+    }
 
     for (i = 0; i < arraycount(AxisNames); ++i)
+    {
         AxisNames[i] = "";
+    }
 
     for (i = 0; i < arraycount(AxisLocked); ++i)
+    {
         AxisLocked[i] = 0;
-
-    for (i = 0; i < arraycount(AxisNextRallyPointTimes); ++i)
-        AxisNextRallyPointTimes[i] = 0.0;
+    }
 
     for (i = 0; i < arraycount(AlliesAssistantSquadLeaderMemberIndices); ++i)
+    {
         AlliesAssistantSquadLeaderMemberIndices[i] = -1;
+    }
 
     for (i = 0; i < arraycount(AlliesNames); ++i)
+    {
         AlliesNames[i] = "";
+    }
 
     for (i = 0; i < arraycount(AlliesLocked); ++i)
+    {
         AlliesLocked[i] = 0;
-
-    for (i = 0; i < arraycount(AlliesNextRallyPointTimes); ++i)
-        AlliesNextRallyPointTimes[i] = 0.0;
+    }
 
     SquadBans.Length = 0;
     SquadLeaderDraws.Length = 0;
@@ -690,6 +703,9 @@ function int CreateSquad(DHPlayerReplicationInfo PRI, optional string Name)
             // from trying to exploit the system.
             SetSquadNextRallyPointTime(TeamIndex, i, Level.Game.GameReplicationInfo.ElapsedTime + RallyPointInitialDelaySeconds);
 
+            // This new squad leader may need to have their role invalidated.
+            MaybeInvalidateRole(PC);
+
             return i;
         }
     }
@@ -740,6 +756,8 @@ function bool ChangeSquadLeader(DHPlayerReplicationInfo PRI, int TeamIndex, int 
         return false;
     }
 
+    MaybeLeaveCommandVoiceChannel(PRI);
+
     // "You are no longer the squad leader"
     PC.ReceiveLocalizedMessage(SquadMessageClass, 33);
 
@@ -750,6 +768,10 @@ function bool ChangeSquadLeader(DHPlayerReplicationInfo PRI, int TeamIndex, int 
         // "You are now the squad leader"
         OtherPC.ReceiveLocalizedMessage(SquadMessageClass, 34);
     }
+
+    // Both the incoming and outgoing squad leader may need to have their current roles invalidated.
+    MaybeInvalidateRole(PC);
+    MaybeInvalidateRole(OtherPC);
 
     // "{0} has become the squad leader"
     BroadcastSquadLocalizedMessage(PRI.Team.TeamIndex, PRI.SquadIndex, SquadMessageClass, 35, NewSquadLeader);
@@ -782,6 +804,7 @@ function bool LeaveSquad(DHPlayerReplicationInfo PRI, optional bool bShouldShowL
     local array<DHPlayerReplicationInfo> Volunteers;
     local DHPlayerReplicationInfo Assistant;
     local DarkestHourGame G;
+    local bool bHasActiveChannelChanged;
 
     G = DarkestHourGame(Level.Game);
     GRI = DHGameReplicationInfo(Level.Game.GameReplicationInfo);
@@ -818,6 +841,7 @@ function bool LeaveSquad(DHPlayerReplicationInfo PRI, optional bool bShouldShowL
     // Remove squad member.
     SetMember(TeamIndex, SquadIndex, SquadMemberIndex, none);
     ResetPlayerSquadInfo(PRI);
+    MaybeInvalidateRole(PC);
 
     // Clear squad leader volunteer application.
     ClearSquadLeaderVolunteer(PRI, TeamIndex, SquadIndex);
@@ -864,6 +888,9 @@ function bool LeaveSquad(DHPlayerReplicationInfo PRI, optional bool bShouldShowL
         }
     }
 
+    // Remove the squad leader from the command voice channel
+    bHasActiveChannelChanged = MaybeLeaveCommandVoiceChannel(GetSquadLeader(TeamIndex, SquadIndex));
+
     // Leave the squad voice channel
     VRI = DHVoiceReplicationInfo(PRI.VoiceInfo);
 
@@ -878,8 +905,11 @@ function bool LeaveSquad(DHPlayerReplicationInfo PRI, optional bool bShouldShowL
                 PC.ServerLeaveVoiceChannel(SquadVCR.ChannelIndex);
             }
 
-            // Set active channel to the local channel
-            PC.Speak(VRI.LocalChannelName);
+            if (!bHasActiveChannelChanged)
+            {
+                // Set active channel to the local channel
+                PC.Speak(VRI.LocalChannelName);
+            }
         }
     }
 
@@ -2623,6 +2653,9 @@ function SetAssistantSquadLeader(int TeamIndex, int SquadIndex, DHPlayerReplicat
         {
             // "You are no longer the assistant squad leader."
             PC.ReceiveLocalizedMessage(class'DHSquadMessage', 71);
+
+            MaybeInvalidateRole(PC);
+            MaybeLeaveCommandVoiceChannel(ASL);
         }
     }
 
@@ -2650,6 +2683,83 @@ function SetAssistantSquadLeader(int TeamIndex, int SquadIndex, DHPlayerReplicat
 
         // "{0} is now the assistant squad leader."
         BroadcastSquadLocalizedMessage(TeamIndex, SquadIndex, class'DHSquadMessage', 72, PRI);
+    }
+}
+
+function MaybeInvalidateRole(DHPlayer PC)
+{
+    local DHRoleInfo RI;
+    local DHGameReplicationInfo GRI;
+    local int DefaultRoleIndex;
+
+    if (PC == none) { return; }
+
+    RI = DHRoleInfo(PC.GetRoleInfo());
+
+    if (RI == none) { return; }
+
+    GRI = DHGameReplicationInfo(Level.Game.GameReplicationInfo);
+
+    if (GRI == none) { return; }
+
+    if (PC.GetRoleEnabledResult(RI) != RER_Enabled)
+    {
+        // "You are no longer qualified to be {article} {name}."
+        PC.ReceiveLocalizedMessage(class'DHGameMessage', 24,,, RI);
+
+        DefaultRoleIndex = GRI.GetDefaultRoleIndexForTeam(PC.GetTeamNum());
+
+        // Set the player's role to a default so that they don't occupy the role.abs
+        // Also set the spawn paramters to be invalid so they are forced to go to
+        // the deploy menu upon death.
+        PC.ServerSetPlayerInfo(255, DefaultRoleIndex, -1, -1, PC.SpawnPointIndex, PC.VehiclePoolIndex);
+        PC.bSpawnParametersInvalidated = true;
+    }
+
+    // HACK: Not a nice place to put this.
+    if (PC.IsSquadLeader())
+    {
+        PC.DestroyShovelItem();
+    }
+}
+
+function bool MaybeLeaveCommandVoiceChannel(DHPlayerReplicationInfo PRI)
+{
+    local DHVoiceReplicationInfo VRI;
+    local DHPlayer PC;
+    local VoiceChatRoom VCR;
+
+    if (PRI == none || PRI.CanAccessCommandChannel() || PRI.Team == none)
+    {
+        return false;
+    }
+
+    VRI = DHVoiceReplicationInfo(PRI.VoiceInfo);
+    PC = DHPlayer(PRI.Owner);
+
+    if (VRI == none || PC == none)
+    {
+        return false;
+    }
+
+    VCR = VRI.GetChannel(VRI.CommandChannelName, PRI.Team.TeamIndex);
+
+    if (VCR == none)
+    {
+        return false;
+    }
+
+    PC.ServerLeaveVoiceChannel(VCR.ChannelIndex);
+
+    // Set the next channel in the hierarchy as active
+    if (PRI.IsInSquad())
+    {
+        VRI.JoinSquadChannel(PRI, PRI.Team.TeamIndex, PRI.SquadIndex);
+        PC.Speak("SQUAD");
+    }
+    else
+    {
+        PC.Speak(VRI.LocalChannelName);
     }
 }
 

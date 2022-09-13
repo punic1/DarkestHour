@@ -1,6 +1,6 @@
 //==============================================================================
 // Darkest Hour: Europe '44-'45
-// Darklight Games (c) 2008-2021
+// Darklight Games (c) 2008-2022
 //==============================================================================
 
 class DHConstruction extends Actor
@@ -35,6 +35,7 @@ enum EConstructionErrorType
     ERROR_TooCloseToEnemyObjective, // Too close to enemy controlled objective
     ERROR_MissingRequirement,       // Not close enough to a required friendly construciton
     ERROR_InDangerZone,             // Cannot place this construction inside enemy territory.
+    ERROR_Exhausted,                // Your team cannot place any more of these this round.
     ERROR_Custom,                   // Custom error type (provide an error message in OptionalString)
     ERROR_Other
 };
@@ -233,6 +234,9 @@ var localized string ConstructionVerb;  // eg. dig, emplace, build etc.
 var DHPlayer InstigatorController;
 var int CompletionPointValue;
 
+// Artillery
+var bool bIsArtillery;
+
 replication
 {
     reliable if (bNetDirty && Role == ROLE_Authority)
@@ -294,6 +298,37 @@ simulated function PostBeginPlay()
     else
     {
         Warn("Unable to find construction manager!");
+    }
+}
+
+// Called when this construction is spawned by a player
+function OnSpawnedByPlayer()
+{
+    local DHGameReplicationInfo GRI;
+    local DH_LevelInfo LI;
+    local int i;
+
+    LI = class'DH_LevelInfo'.static.GetInstance(Level);
+    GRI = DHGameReplicationInfo(Level.Game.GameReplicationInfo);
+
+    if (GRI == none || LI == none)
+    {
+        return;
+    }
+
+    for (i = 0; i < arraycount(GRI.TeamConstructions); ++i)
+    {
+        if (GRI.TeamConstructions[i].ConstructionClass == none)
+        {
+            break;
+        }
+
+        if (GRI.TeamConstructions[i].ConstructionClass == Class &&
+            GRI.TeamConstructions[i].TeamIndex == GetTeamIndex())
+        {
+            GRI.TeamConstructions[i].Remaining = Max(0, GRI.TeamConstructions[i].Remaining - 1);
+            break;
+        }
     }
 }
 
@@ -377,6 +412,98 @@ simulated event Destroyed()
     super.Destroyed();
 }
 
+function array<DHConstructionSupplyAttachment> GetTouchingSupplyAttachments()
+{
+    local array<DHConstructionSupplyAttachment> Attachments;
+    local DHConstructionSupplyAttachment Attachment;
+
+    foreach AllActors(class'DHConstructionSupplyAttachment', Attachment)
+    {
+        if (Attachment.IsTouchingActor(self))
+        {
+            Attachments[Attachments.Length] = Attachment;
+        }
+    }
+
+    return Attachments;
+}
+
+function RefundSupplies(int InstigatorTeamIndex)
+{
+    local int i;
+    local int SupplyCost;
+    local int SuppliesToRefund, SuppliesRefunded;
+    local array<DHConstructionSupplyAttachment> Attachments;
+    local UComparator AttachmentComparator;
+
+    SupplyCost = GetSupplyCost(GetContext());
+
+    if (TeamIndex == NEUTRAL_TEAM_INDEX || TeamIndex == InstigatorTeamIndex)
+    {
+        // Sort the supply attachments by priority.
+        Attachments = GetTouchingSupplyAttachments();
+        AttachmentComparator = new class'UComparator';
+        AttachmentComparator.CompareFunction = class'DHConstructionSupplyAttachment'.static.CompareFunction;
+        class'USort'.static.Sort(Attachments, AttachmentComparator);
+
+        // Refund supplies to the touching supply attachments.
+        for (i = 0; i < Attachments.Length && SupplyCost > 0; ++i)
+        {
+            SuppliesToRefund = Min(SupplyCost, Attachments[i].SupplyCountMax - Attachments[i].GetSupplyCount());
+            Attachments[i].SetSupplyCount(Attachments[i].GetSupplyCount() + SuppliesToRefund);
+            SuppliesRefunded += SuppliesToRefund;
+            SupplyCost -= SuppliesToRefund;
+        }
+    }
+}
+
+function TearDown(int InstigatorTeamIndex)
+{
+    local DHGameReplicationInfo GRI;
+    local DH_LevelInfo LI;
+    local int i;
+
+    if (bShouldRefundSuppliesOnTearDown)
+    {
+        RefundSupplies(InstigatorTeamIndex);
+    }
+    
+    // Update the construction counts remaining in the GRI
+    GRI = DHGameReplicationInfo(Level.Game.GameReplicationInfo);
+    LI = class'DH_LevelInfo'.static.GetInstance(Level);
+
+    if (GRI == none || LI == none)
+    {
+        return;
+    }
+
+    for (i = 0; i < arraycount(GRI.TeamConstructions); ++i)
+    {
+        if (GRI.TeamConstructions[i].ConstructionClass == none)
+        {
+            break;
+        }
+
+        if (GRI.TeamConstructions[i].TeamIndex == TeamIndex &&
+            GRI.TeamConstructions[i].ConstructionClass == Class)
+        {
+            GRI.TeamConstructions[i].Remaining = Max(LI.TeamConstructions[i].Limit, GRI.TeamConstructions[i].Remaining + 1);
+            break;
+        }
+    }
+
+    if (IsPlacedByPlayer())
+    {
+        Destroy();
+    }
+    else
+    {
+        // This construction was placed in the editor, so go to the
+        // dummy state.
+        GotoState('Dummy');
+    }
+}
+
 auto simulated state Constructing
 {
     simulated function BeginState()
@@ -411,7 +538,11 @@ auto simulated state Constructing
     {
         local int i;
         local int OldStageIndex;
-        local int SuppliesRefunded;
+        local DHGameReplicationInfo GRI;
+        local DH_LevelInfo LI;
+
+        GRI = DHGameReplicationInfo(Level.Game.GameReplicationInfo);
+        LI = class'DH_LevelInfo'.static.GetInstance(Level);
 
         if (bCanDieOfStagnation)
         {
@@ -420,23 +551,7 @@ auto simulated state Constructing
 
         if (Progress < 0)
         {
-            if (bShouldRefundSuppliesOnTearDown &&
-                DHPawn(Instigator) != none &&
-                (NEUTRAL_TEAM_INDEX == TeamIndex || Instigator.GetTeamNum() == TeamIndex))
-            {
-                SuppliesRefunded = DHPawn(Instigator).RefundSupplies(GetSupplyCost(GetContext()));
-            }
-
-            if (Owner == none)
-            {
-                // This construction was placed in the editor, so go to the
-                // dummy state.
-                GotoState('Dummy');
-            }
-            else
-            {
-                Destroy();
-            }
+            TearDown(InstigatedBy.GetTeamNum());
         }
         else if (Progress >= ProgressMax)
         {
@@ -493,6 +608,11 @@ Begin:
 
         OnProgressChanged(none);
     }
+}
+
+simulated function bool IsPlacedByPlayer()
+{
+    return Owner != none;
 }
 
 simulated state Constructed
@@ -833,6 +953,7 @@ function static ConstructionError GetPlayerError(DHActorProxy.Context Context)
     local DHPlayerReplicationInfo PRI;
     local DHSquadReplicationInfo SRI;
     local ConstructionError E;
+    local DHGameReplicationInfo GRI;
 
     if (Context.PlayerController == none)
     {
@@ -877,8 +998,9 @@ function static ConstructionError GetPlayerError(DHActorProxy.Context Context)
 
     SRI = Context.PlayerController.SquadReplicationInfo;
     PRI = DHPlayerReplicationInfo(P.PlayerReplicationInfo);
+    GRI = DHGameReplicationInfo(Context.PlayerController.GameReplicationInfo);
 
-    if (PRI == none || SRI == none || !IsPlaceableByPlayer(PRI))
+    if (PRI == none || SRI == none || GRI == none || !IsPlaceableByPlayer(PRI))
     {
         E.Type = ERROR_Fatal;
         return E;
@@ -888,6 +1010,13 @@ function static ConstructionError GetPlayerError(DHActorProxy.Context Context)
     {
         E.Type = ERROR_SquadTooSmall;
         E.OptionalInteger = default.SquadMemberCountMinimum;
+        return E;
+    }
+
+    if (GRI.GetTeamConstructionRemaining(Context.TeamIndex, default.Class) == 0)
+    {
+        E.Type = ERROR_Exhausted;
+        E.OptionalInteger = GRI.GetTeamConstructionNextIncrementTimeSeconds(Context.TeamIndex, default.Class);
         return E;
     }
 
@@ -1107,6 +1236,11 @@ static function float GetPlacementDiameter()
     return default.CollisionRadius * 2 + class'DHUnits'.static.MetersToUnreal(default.ControlPointParameters.SpacingDistanceMeters);
 }
 
+static function bool IsArtillery()
+{
+    return default.bIsArtillery;
+}
+
 defaultproperties
 {
     TeamOwner=TEAM_Neutral
@@ -1197,7 +1331,6 @@ defaultproperties
 
     // Progress
     StageIndex=-1
-    Progress=0
     ProgressMax=4
 
     // Damage
@@ -1233,4 +1366,6 @@ defaultproperties
     BrokenSoundVolume=5.0
 
     CompletionPointValue=10
+
+    bIsArtillery=false
 }

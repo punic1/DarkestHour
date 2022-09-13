@@ -1,6 +1,6 @@
 //==============================================================================
 // Darkest Hour: Europe '44-'45
-// Darklight Games (c) 2008-2021
+// Darklight Games (c) 2008-2022
 //==============================================================================
 
 class DHArmoredVehicle extends DHVehicle
@@ -103,6 +103,7 @@ var     int         HullFireStarterTeam;
 var     Controller  WhoSetEngineOnFire;
 var     int         EngineFireStarterTeam;
 var     sound       SmokingEngineSound;
+var     bool        bEnableHatchFires;     // allow hatch fires for this vehicle
 
 // Debugging
 var     bool        bDebugPenetration;    // debug lines & text on screen, relating to turret hits & penetration calculations
@@ -399,8 +400,8 @@ simulated function DrawPeriscopeOverlay(Canvas C)
         TextureSize = float(PeriscopeOverlay.MaterialUSize());
         TilePixelWidth = TextureSize / PeriscopeSize * 0.955; // width based on vehicle's GunsightSize (0.955 factor widens visible FOV to full screen for 'standard' overlay if GS=1.0)
         TilePixelHeight = TilePixelWidth * float(C.SizeY) / float(C.SizeX); // height proportional to width, maintaining screen aspect ratio
-        TileStartPosU = ((TextureSize - TilePixelWidth) / 2.0);// - OverlayCorrectionX;
-        TileStartPosV = ((TextureSize - TilePixelHeight) / 2.0);// - OverlayCorrectionY;
+        TileStartPosU = (TextureSize - TilePixelWidth) / 2.0;// - OverlayCorrectionX;
+        TileStartPosV = (TextureSize - TilePixelHeight) / 2.0;// - OverlayCorrectionY;
 
         // Draw the periscope overlay
         C.SetPos(0.0, 0.0);
@@ -515,7 +516,7 @@ simulated function bool CanExit()
 
 // New keybind function to toggle whether an armored vehicle is locked, stopping new players from entering tank crew positions
 // CanPlayerLockVehicle() is pre-checked by net client for network efficiency, by avoiding sending invalid replicated function calls to server
-simulated exec function ToggleVehicleLock()
+exec simulated function ToggleVehicleLock()
 {
     if (Role == ROLE_Authority || CanPlayerLockVehicle(self))
     {
@@ -930,7 +931,7 @@ simulated function SetFireEffects()
 {
     if (Level.NetMode != NM_DedicatedServer)
     {
-        if (IsVehicleBurning())
+        if (IsVehicleBurning() && bEnableHatchFires)
         {
             // Hatch fire effects
             if (bOnFire && !bSetHullFireEffects)
@@ -1081,7 +1082,7 @@ function bool IsNewPointShot(vector HitLocation, vector LineCheck, int Index, op
 
     if (NewVehHitpoints[Index].PointOffset != vect(0.0, 0.0, 0.0))
     {
-        HitPointLocation += (NewVehHitpoints[Index].PointOffset >> rotator(HitPointCoords.XAxis));
+        HitPointLocation += NewVehHitpoints[Index].PointOffset >> rotator(HitPointCoords.XAxis);
     }
 
     // Set the hit line to check
@@ -1105,7 +1106,7 @@ function bool IsNewPointShot(vector HitLocation, vector LineCheck, int Index, op
         if (t < DotMM)
         {
             t /= DotMM;
-            Difference -= (t * LineCheck);
+            Difference -= t * LineCheck;
         }
         else
         {
@@ -1286,6 +1287,16 @@ simulated function bool ShouldPenetrate(DHAntiVehicleProjectile P, vector HitLoc
         ArmourSlopeRotator.Pitch = class'UUnits'.static.DegreesToUnreal(ArmorSlope);
         ArmorNormal = Normal(vector(ArmourSlopeRotator) >> rotator(HitSideAxis));
         AngleOfIncidence = class'UUnits'.static.RadiansToDegrees(Acos(-ProjectileDirection dot ArmorNormal));
+
+        // Check if round is to be deflected because the AOI is too high.
+        if (P.bDeflectAOI && AngleOfIncidence > P.DeflectAOI)
+        {
+            P.bRoundDeflected = true;
+
+            ResetTakeDamageVariables();
+
+            return false;
+        }
 
         //Added side armor (schurzen) defeat HEAT projectiles if angle of shot is above 45°
         if (bSideHit && bHasAddedSideArmor && (P.RoundType == RT_HEAT && AngleOfIncidence > 45))
@@ -2401,6 +2412,7 @@ defaultproperties
     AmmoIgnitionProbability=0.75
 
     // Vehicle fires
+    bEnableHatchFires=true
     EngineToHullFireChance=0.05  //increased to 0.1 on all petrol engines
     PlayerFireDamagePer2Secs=15.0 // roughly 12 seconds from full health to death; reduced to 12 on all diesels
     FireDetonationChance=0.07  //reduced to 0.045 on all diesels

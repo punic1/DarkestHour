@@ -1,6 +1,6 @@
 //==============================================================================
 // Darkest Hour: Europe '44-'45
-// Darklight Games (c) 2008-2021
+// Darklight Games (c) 2008-2022
 //==============================================================================
 
 class DH_T3476_42Cannon extends DHVehicleCannon;
@@ -15,8 +15,8 @@ defaultproperties
     //Skins(1)=Texture'allies_vehicles_tex.int_vehicles.T3476_int'
     bUseHighDetailOverlayIndex=false
 
-    //HighDetailOverlay=shader'allies_vehicles_tex.int_vehicles.t3476_int_s'
-    CollisionStaticMesh=StaticMesh'DH_Soviet_vehicles_stc.T34.T34m42_Turret_Coll'
+    //HighDetailOverlay=Shader'allies_vehicles_tex.int_vehicles.t3476_int_s'
+    CollisionStaticMeshes(0)=(CollisionStaticMesh=StaticMesh'DH_Soviet_vehicles_stc.T34.T34m42_Turret_Coll')
 
     // Turret armor (model 1942)
     FrontArmorFactor=5.3
@@ -54,11 +54,11 @@ defaultproperties
     SecondarySpread=0.002
 
     // Coaxial MG ammo
-    AltFireProjectileClass=class'DH_Weapons.DH_DP28Bullet'
+    AltFireProjectileClass=class'DH_Weapons.DH_DP27Bullet'
     InitialAltAmmo=63
     NumMGMags=15
-    AltFireInterval=0.1
-    TracerProjectileClass=class'DH_Weapons.DH_DP28TracerBullet'
+    AltFireInterval=0.105
+    TracerProjectileClass=class'DH_Weapons.DH_DP27TracerBullet'
     TracerFrequency=5
     HudAltAmmoIcon=Texture'InterfaceArt_tex.HUD.dp27_ammo'
 

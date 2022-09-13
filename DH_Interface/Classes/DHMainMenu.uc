@@ -1,6 +1,6 @@
 //==============================================================================
 // Darkest Hour: Europe '44-'45
-// Darklight Games (c) 2008-2021
+// Darklight Games (c) 2008-2022
 //==============================================================================
 
 class DHMainMenu extends UT2K4GUIPage;
@@ -23,7 +23,6 @@ var     string                  MOTDURL;
 var     string                  FacebookURL;
 var     string                  GitHubURL;
 var     string                  SteamCommunityURL;
-var     string                  PatreonURL;
 var     string                  DiscordURL;
 var     string                  ResetINIGuideURL;
 
@@ -60,7 +59,6 @@ function InitComponent(GUIController MyController, GUIComponent MyOwner)
     sb_Social.ManageComponent(b_Facebook);
     sb_Social.ManageComponent(b_GitHub);
     sb_Social.ManageComponent(b_SteamCommunity);
-    sb_Social.ManageComponent(b_Patreon);
     sb_Social.ManageComponent(b_Discord);
 
     c_MOTD.ManageComponent(tb_MOTDContent);
@@ -77,7 +75,7 @@ function InitComponent(GUIController MyController, GUIComponent MyOwner)
         Controller.SteamGetUserName() != "")
     {
         // This converts an underscore to a non-breaking space (0xA0)
-        PlayerOwner().ConsoleCommand("SetName" @ Repl(Controller.SteamGetUserName(), "_", " "));
+        PlayerOwner().ConsoleCommand("SetName" @ Repl(Controller.SteamGetUserName(), "_", "ï¿½"));
     }
 }
 
@@ -265,10 +263,6 @@ function bool ButtonClick(GUIComponent Sender)
             PlayerOwner().ConsoleCommand("START" @ default.SteamCommunityURL);
             break;
 
-       case b_Patreon:
-            PlayerOwner().ConsoleCommand("START" @ default.PatreonURL);
-            break;
-
         case b_Discord:
             PlayerOwner().ConsoleCommand("START" @ default.DiscordURL);
             break;
@@ -278,7 +272,7 @@ function bool ButtonClick(GUIComponent Sender)
             break;
 
         case i_Announcement:
-            PlayerOwner().ConsoleCommand("START" @ default.PatreonURL);
+            PlayerOwner().ConsoleCommand("START" @ default.SteamCommunityURL);
             HideAnnouncement();
             break;
     }
@@ -303,6 +297,7 @@ function HideAnnouncement()
 event Opened(GUIComponent Sender)
 {
     local UVersion SavedVersionObject;
+    local string TextureDetail, CharacterDetail;
 
     sb_ShowVersion.SetVisibility(true);
 
@@ -378,6 +373,13 @@ event Opened(GUIComponent Sender)
             }
         }
 
+        if (SavedVersionObject == none || SavedVersionObject.Compare(class'UVersion'.static.FromString("v10.0.0")) < 0)
+        {
+            Log("Configuration file is older than v10.0.0, assigning the artillery target toggle keybind");
+
+            SetKeyBindIfAvailable("Comma", "ToggleSelectedArtilleryTarget");
+        }
+
         SavedVersion = class'DarkestHourGame'.default.Version.ToString();
         SaveConfig();
     }
@@ -405,6 +407,11 @@ event Opened(GUIComponent Sender)
         PlayerOwner().ConsoleCommand("set Engine.PlayerController VoiceChatLANCodec CODEC_96WB");
         PlayerOwner().SaveConfig();
     }
+
+    TextureDetail = PlayerOwner().ConsoleCommand("get ini:Engine.Engine.ViewportManager TextureDetailWorld");
+    CharacterDetail = PlayerOwner().ConsoleCommand("get ini:Engine.Engine.ViewportManager TextureDetailPlayerSkin");
+
+    Log(TextureDetail @ CharacterDetail);
 
     // Due to a bug introduced in 9.0, the VoiceVolume was being
     // set to 0.0 upon saving settings. Originally we thought the setting
@@ -705,21 +712,6 @@ defaultproperties
     End Object
     b_SteamCommunity=SteamCommunityButton
 
-    Begin Object Class=GUIGFXButton Name=PatreonButton
-        WinWidth=0.04
-        WinHeight=0.075
-        WinLeft=0.875
-        WinTop=0.925
-        OnClick=DHMainMenu.ButtonClick
-        Graphic=Texture'DH_GUI_Tex.MainMenu.patreon'
-        bTabStop=true
-        Position=ICP_Center
-        Hint="Support us on Patreon!"
-        bRepeatClick=false
-        StyleName="TextLabel"
-    End Object
-    b_Patreon=PatreonButton
-
     Begin Object Class=GUIGFXButton Name=DiscordButton
         WinWidth=0.04
         WinHeight=0.075
@@ -818,10 +810,9 @@ defaultproperties
     WinHeight=1.0
     MOTDErrorString="Error: Could not download news feed ({0})"
     bShouldRequestMOTD=true
-    GitHubURL="http://github.com/DarklightGames/DarkestHour/wiki"
+    GitHubURL="http://github.com/DarklightGames/DarkestHour/"
     FacebookURL="http://www.facebook.com/darkesthourgame"
     SteamCommunityURL="http://steamcommunity.com/app/1280"
-    PatreonURL="http://www.patreon.com/theel"
     DiscordURL="http://discord.gg/EEwFhtk"
     ResetINIGuideURL="http://steamcommunity.com/sharedfiles/filedetails/?id=713146225"
     ControlsChangedMessage="New controls have been added to the game. As a result, your previous control bindings may have been changed.||Do you want to review your control settings?"

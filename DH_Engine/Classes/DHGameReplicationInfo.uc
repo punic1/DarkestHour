@@ -1,11 +1,11 @@
 //==============================================================================
 // Darkest Hour: Europe '44-'45
-// Darklight Games (c) 2008-2021
+// Darklight Games (c) 2008-2022
 //==============================================================================
 
 class DHGameReplicationInfo extends ROGameReplicationInfo;
 
-const RADIOS_MAX = 10;
+const RADIOS_MAX = 32;
 const ROLES_MAX = 16;
 const MORTAR_TARGETS_MAX = 2;
 const VEHICLE_POOLS_MAX = 32;
@@ -18,8 +18,10 @@ const MAP_MARKERS_MAX = 20;
 const MAP_MARKERS_CLASSES_MAX = 16;
 const ARTILLERY_TYPES_MAX = 8;
 const ARTILLERY_MAX = 8;
+const MINE_VOLUMES_MAX = 64;
+const NO_ARTY_VOLUMES_MAX = 32;
 
-enum VehicleReservationError
+enum EVehicleReservationError
 {
     ERROR_None,
     ERROR_Fatal,
@@ -30,17 +32,6 @@ enum VehicleReservationError
     ERROR_PoolMaxActive,
     ERROR_NoReservations,
     ERROR_NoLicense
-};
-
-struct ArtilleryTarget
-{
-    var bool            bIsActive;
-    var DHPlayer        Controller;
-    var byte            TeamIndex;
-    var vector          Location;
-    var vector          HitLocation;
-    var float           Time;
-    var bool            bIsSmoke;   // TODO: convert to enum
 };
 
 struct SpawnVehicle
@@ -66,11 +57,21 @@ enum EArtilleryTypeError
     ERROR_Unavailable,
     ERROR_Exhausted,
     ERROR_Unqualified,
+    ERROR_NotEnoughSquadMembers,
     ERROR_Cooldown,
     ERROR_Ongoing,
     ERROR_SquadTooSmall,
     ERROR_Cancellable
 };
+
+struct STeamScores
+{
+    var int Kills;
+    var int Deaths;
+    var int CategoryScores[2];
+};
+
+var STeamScores         TeamScores[2];
 
 var class<DHGameType>   GameType;
 
@@ -101,13 +102,6 @@ var byte                DHAxisRoleLimit[ROLES_MAX];
 var byte                DHAxisRoleBotCount[ROLES_MAX];
 var byte                DHAxisRoleCount[ROLES_MAX];
 
-// The maximum distance an artillery strike can be away from a marked target for
-// a hit indicator to show on the map
-var float               ArtilleryTargetDistanceThreshold;
-
-var ArtilleryTarget     AlliedArtilleryTargets[MORTAR_TARGETS_MAX];
-var ArtilleryTarget     GermanArtilleryTargets[MORTAR_TARGETS_MAX];
-
 var int                 SpawnsRemaining[2];
 var float               AttritionRate[2];
 var float               CurrentAlliedToAxisRatio;
@@ -123,6 +117,11 @@ var byte                VehiclePoolSpawnCounts[VEHICLE_POOLS_MAX];
 var byte                VehiclePoolIsSpawnVehicles[VEHICLE_POOLS_MAX];
 var byte                VehiclePoolReservationCount[VEHICLE_POOLS_MAX];
 var int                 VehiclePoolIgnoreMaxTeamVehiclesFlags;
+
+// It is impossible to get DHMineVolume to actually replicate variables so this is needed as proxy.
+var byte                    DHMineVolumeIsActives[MINE_VOLUMES_MAX];
+var array<RONoArtyVolume>   DHNoArtyVolumes;
+var byte                    DHNoArtyVolumeIsActives[NO_ARTY_VOLUMES_MAX];
 
 var int                 MaxTeamVehicles[2];
 
@@ -143,6 +142,16 @@ var private array<string>   ConstructionClassNames;
 var class<DHConstruction>   ConstructionClasses[CONSTRUCTION_CLASSES_MAX];
 var DHConstructionManager   ConstructionManager;
 
+struct STeamConstruction
+{
+    var class<DHConstruction> ConstructionClass;
+    var byte TeamIndex;
+    var byte Remaining;
+    var int NextIncrementTimeSeconds;
+};
+
+var STeamConstruction   TeamConstructions[16];
+
 var bool                bAreConstructionsEnabled;
 var bool                bAllChatEnabled;
 
@@ -158,11 +167,14 @@ var private byte        OldDangerZoneBalance;
 // Map markers
 struct MapMarker
 {
+    var DHPlayerReplicationInfo Author;
     var class<DHMapMarker> MapMarkerClass;
-    var byte LocationX;     // Quantized representation of 0.0..1.0
-    var byte LocationY;
-    var byte SquadIndex;    // The squad index that owns the marker, or -1 if team-wide
-    var int ExpiryTime;     // The expiry time, relative to ElapsedTime in GRI
+    var byte LocationX;                     // Quantized representation of 0.0..1.0 - X coordinate
+    var byte LocationY;                     // Quantized representation of 0.0..1.0 - Y coordinate
+    var byte SquadIndex;                    // The squad index that owns the marker, or -1 if team-wide
+    var int CreationTime;                   // The time this marker was created, relative to ElapsedTime
+    var int ExpiryTime;                     // The expiry time, relative to ElapsedTime
+    var vector WorldLocation;               // World location of the marker
 };
 
 // This handles the mutable artillery type info (classes, team indices can be fetched from static data in DH_LevelInfo).
@@ -177,10 +189,26 @@ struct ArtilleryTypeInfo
 };
 var ArtilleryTypeInfo                   ArtilleryTypeInfos[ARTILLERY_TYPES_MAX];
 
+// to do: add airstrikes
+enum EArtilleryType
+{
+    ArtyType_Barrage,
+    ArtyType_Paradrop,
+    ArtyType_Airstrikes
+};
+
+struct SAvailableArtilleryInfoEntry
+{
+    var int Count;
+    var EArtilleryType Type;
+};
+
 var private array<string>               MapMarkerClassNames;
 var class<DHMapMarker>                  MapMarkerClasses[MAP_MARKERS_CLASSES_MAX];
 var MapMarker                           AxisMapMarkers[MAP_MARKERS_MAX];
 var MapMarker                           AlliesMapMarkers[MAP_MARKERS_MAX];
+var byte                                bOffMapArtilleryEnabled[2];
+var byte                                bOnMapArtilleryEnabled[2];
 
 // Delayed round ending
 var byte   RoundWinnerTeamIndex;
@@ -204,8 +232,6 @@ replication
         DHAlliesRoleBotCount,
         DHAxisRoleBotCount,
         Radios,
-        AlliedArtilleryTargets,
-        GermanArtilleryTargets,
         VehiclePoolVehicleClasses,
         VehiclePoolIsActives,
         VehiclePoolNextAvailableTimes,
@@ -245,7 +271,13 @@ replication
         DangerZoneBalance,
         RoundWinnerTeamIndex,
         bIsSurrenderVoteEnabled,
-        SurrenderVotesInProgress;
+        SurrenderVotesInProgress,
+        TeamConstructions,
+        bOffMapArtilleryEnabled,
+        bOnMapArtilleryEnabled,
+        DHMineVolumeIsActives,
+        DHNoArtyVolumeIsActives,
+        TeamScores;
 
     reliable if (bNetInitial && Role == ROLE_Authority)
         AlliedNationID, ConstructionClasses, MapMarkerClasses;
@@ -263,11 +295,11 @@ simulated event PreBeginPlay()
 // Another problem is a big splash effect was being played for every ejected bullet shell case that hit water, looking totally wrong for such a small, relatively slow object
 simulated function PostBeginPlay()
 {
-    local WaterVolume       WV;
-    local FluidSurfaceInfo  FSI;
-    local int               i, j;
-    local DH_LevelInfo      LI;
-    local class<DHMapMarker> MapMarkerClass;
+    local WaterVolume                   WV;
+    local FluidSurfaceInfo              FSI;
+    local int                           i, j;
+    local DH_LevelInfo                  LI;
+    local class<DHMapMarker>            MapMarkerClass;
 
     super.PostBeginPlay();
 
@@ -293,7 +325,10 @@ simulated function PostBeginPlay()
     {
         for (i = 0; i < ConstructionClassNames.Length; ++i)
         {
-            AddConstructionClass(class<DHConstruction>(DynamicLoadObject(ConstructionClassNames[i], class'class')));
+            if (ConstructionClassNames[i] != "")
+            {
+                AddConstructionClass(class<DHConstruction>(DynamicLoadObject(ConstructionClassNames[i], class'class')));
+            }
         }
 
         LI = class'DH_LevelInfo'.static.GetInstance(Level);
@@ -315,7 +350,68 @@ simulated function PostBeginPlay()
                 MapMarkerClasses[j++] = MapMarkerClass;
             }
         }
+
+        RegisterMineVolumes();
     }
+
+    RegisterNoArtyVolumes();
+}
+
+simulated function int GetTeamConstructionIndex(int TeamIndex, class<DHConstruction> ConstructionClass)
+{
+    local int i;
+
+    for (i = 0; i < arraycount(TeamConstructions); ++i)
+    {
+        if (TeamConstructions[i].ConstructionClass == none)
+        {
+            continue;
+        }
+
+        if (TeamConstructions[i].TeamIndex == TeamIndex &&
+            TeamConstructions[i].ConstructionClass == ConstructionClass)
+        {
+            return i;
+        }
+    }
+
+    return -1;
+}
+
+simulated function int GetTeamConstructionNextIncrementTimeSeconds(int TeamIndex, class<DHConstruction> ConstructionClass)
+{
+    local int i;
+    local DH_LevelInfo LI;
+
+    i = GetTeamConstructionIndex(TeamIndex, ConstructionClass);
+
+    if (i == -1)
+    {
+       return -1;
+    }
+
+    LI = class'DH_LevelInfo'.static.GetInstance(Level);
+
+    if (LI != none && LI.TeamConstructions[i].ReplenishPeriodSeconds > 0)
+    {
+        return TeamConstructions[i].NextIncrementTimeSeconds;
+    }
+
+    return -1;
+}
+
+simulated function int GetTeamConstructionRemaining(int TeamIndex, class<DHConstruction> ConstructionClass)
+{
+    local int i;
+
+    i = GetTeamConstructionIndex(TeamIndex, ConstructionClass);
+
+    if (i == -1)
+    {
+       return -1;
+    }
+
+    return TeamConstructions[i].Remaining;
 }
 
 simulated function PostNetBeginPlay()
@@ -601,6 +697,11 @@ simulated event Timer()
     {
         DHPlayer(Level.GetLocalPlayerController()).CheckUnlockWeapons();
     }
+
+    if (Role == ROLE_Authority)
+    {
+        UpdateNoArtyVolumeStatuses();
+    }
 }
 
 //==============================================================================
@@ -790,6 +891,30 @@ simulated function DHSpawnPointBase GetSpawnPoint(int SpawnPointIndex)
     return SpawnPoints[SpawnPointIndex];
 }
 
+simulated function DHSpawnPointBase GetMostDesirableSpawnPoint(DHPlayer PC, optional out int OutDesirability)
+{
+    local int i, Desirability;
+    local DHSpawnPointBase SP;
+
+    OutDesirability = -MaxInt;
+
+    for (i = 0; i < arraycount(SpawnPoints); ++i)
+    {
+        if (SpawnPoints[i] != none && SpawnPoints[i].IsVisibleToPlayer(PC)) // TODO: should probably check if we can even spawn here
+        {
+            Desirability = SpawnPoints[i].GetDesirability();
+
+            if (Desirability > OutDesirability)
+            {
+                SP = SpawnPoints[i];
+                OutDesirability = Desirability;
+            }
+        }
+    }
+
+    return SP;
+}
+
 simulated function bool IsRallyPointIndexValid(DHPlayer PC, byte RallyPointIndex, int TeamIndex)
 {
     local DHSpawnPoint_SquadRallyPoint RP;
@@ -895,7 +1020,7 @@ function SetVehiclePoolIsActive(byte VehiclePoolIndex, bool bIsActive)
             if (PC != none && PC.VehiclePoolIndex == VehiclePoolIndex)
             {
                 PC.VehiclePoolIndex = -1;
-                PC.bSpawnPointInvalidated = true;
+                PC.bSpawnParametersInvalidated = true;
             }
         }
     }
@@ -1002,6 +1127,39 @@ simulated function DHRoleInfo GetRole(int TeamIndex, int RoleIndex)
     return none;
 }
 
+simulated function int GetDefaultRoleIndexForTeam(byte TeamIndex)
+{
+    local int i;
+    local DHRoleInfo RI;
+
+    if (TeamIndex == AXIS_TEAM_INDEX)
+    {
+        for (i = 0; i < arraycount(DHAxisRoles); ++i)
+        {
+            RI = DHAxisRoles[i];
+
+            if (DHAxisRoleLimit[i] == 255 && RI != none && !RI.bRequiresSL && !RI.bRequiresSLorASL)
+            {
+                return i;
+            }
+        }
+    }
+    else if (TeamIndex == ALLIES_TEAM_INDEX)
+    {
+        for (i = 0; i < arraycount(DHAlliesRoles); ++i)
+        {
+            RI = DHAlliesRoles[i];
+
+            if (DHAlliesRoleLimit[i] == 255 && RI != none && !RI.bRequiresSL && !RI.bRequiresSLorASL)
+            {
+                return i;
+            }
+        }
+    }
+
+    return -1;
+}
+
 simulated function int GetRoleIndexAndTeam(RORoleInfo RI, optional out byte Team)
 {
     local int i;
@@ -1062,47 +1220,9 @@ simulated function GetRoleCounts(RORoleInfo RI, out int Count, out int BotCount,
 // Artillery Functions
 //------------------------------------------------------------------------------
 
-function ClearAllArtilleryTargets()
+simulated function bool IsArtilleryEnabled(int TeamIndex)
 {
-    local int i;
-
-    for (i = 0; i < arraycount(GermanArtilleryTargets); ++i)
-    {
-        GermanArtilleryTargets[i].bIsActive = false;
-    }
-
-    for (i = 0; i < arraycount(AlliedArtilleryTargets); ++i)
-    {
-        AlliedArtilleryTargets[i].bIsActive = false;
-    }
-}
-
-function ClearArtilleryTarget(DHPlayer PC)
-{
-    local int i;
-
-    if (PC == none)
-    {
-        return;
-    }
-
-    for (i = 0; i < arraycount(GermanArtilleryTargets); ++i)
-    {
-        if (GermanArtilleryTargets[i].Controller == PC)
-        {
-            GermanArtilleryTargets[i].bIsActive = false;
-            break;
-        }
-    }
-
-    for (i = 0; i < arraycount(AlliedArtilleryTargets); ++i)
-    {
-        if (AlliedArtilleryTargets[i].Controller == PC)
-        {
-            AlliedArtilleryTargets[i].bIsActive = false;
-            break;
-        }
-    }
+    return bOffMapArtilleryEnabled[TeamIndex] == 1 || bOffMapArtilleryEnabled[TeamIndex] == 1;
 }
 
 function AddArtillery(DHArtillery Artillery)
@@ -1309,7 +1429,7 @@ simulated function int GetReservableTankCount(int TeamIndex)
     return MaxTeamVehicles[TeamIndex] - GetTankReservationCount(TeamIndex);
 }
 
-simulated function VehicleReservationError GetVehicleReservationError(DHPlayer PC, DHRoleInfo RI, int TeamIndex, int VehiclePoolIndex)
+simulated function EVehicleReservationError GetVehicleReservationError(DHPlayer PC, DHRoleInfo RI, int TeamIndex, int VehiclePoolIndex)
 {
     local class<DHVehicle> VC;
 
@@ -1392,7 +1512,7 @@ simulated function bool IsPlayerCountInRange(int Floor, int Ceiling)
 // MAP MARKERS
 //==============================================================================
 
-simulated function bool GetMapMarker(int TeamIndex, int MapMarkerIndex, optional out DHGameReplicationInfo.MapMarker MapMarker)
+simulated function bool GetMapMarker(int TeamIndex, int MapMarkerIndex, optional out MapMarker MapMarker)
 {
     local DHGameReplicationInfo.MapMarker MM;
 
@@ -1413,93 +1533,156 @@ simulated function bool GetMapMarker(int TeamIndex, int MapMarkerIndex, optional
             return false;
     }
 
-    if (MM.MapMarkerClass == none || (MM.ExpiryTime != -1 && MM.ExpiryTime <= ElapsedTime))
+    if (MM.MapMarkerClass == none || IsMapMarkerExpired(MM))
     {
-       return false;
+        return false;
     }
 
     MapMarker = MM;
+
     return true;
 }
 
-simulated function GetMapMarkers(out array<MapMarker> MapMarkers, out array<int> Indices, int TeamIndex, int SquadIndex)
+// Trying to refactor this function to access AxisMapMarkers and AlliesMapMarkers directly from other objects
+// will most likely cause "Context expression: Variable is too large (480 bytes, 255 max)" compilation error.
+// You can't access big static arrays of structs from outside of the given object; you have to
+// use a proxy function like this one to retrive elements of a static array as a dynamic array.
+simulated function array<MapMarker> GetMapMarkers(DHPlayer PC)
 {
     local int i;
+    local array<MapMarker> MapMarkers;
 
-    GetMapMarkerIndices(Indices, TeamIndex, SquadIndex);
-
-    switch (TeamIndex)
-    {
-        case AXIS_TEAM_INDEX:
-            for (i = 0; i < Indices.Length; ++i)
-            {
-                MapMarkers[MapMarkers.Length] = AxisMapMarkers[Indices[i]];
-            }
-            break;
-        case ALLIES_TEAM_INDEX:
-            for (i = 0; i < Indices.Length; ++i)
-            {
-                MapMarkers[MapMarkers.Length] = AlliesMapMarkers[Indices[i]];
-            }
-            break;
-    }
-}
-
-simulated function GetMapMarkerIndices(out array<int> Indices, int TeamIndex, int SquadIndex)
-{
-    local int i;
-
-    switch (TeamIndex)
+    switch (PC.GetTeamNum())
     {
         case AXIS_TEAM_INDEX:
             for (i = 0; i < arraycount(AxisMapMarkers); ++i)
             {
-                if (AxisMapMarkers[i].MapMarkerClass != none &&
-                    (AxisMapMarkers[i].ExpiryTime == -1 || AxisMapMarkers[i].ExpiryTime > ElapsedTime) &&
-                    (AxisMapMarkers[i].SquadIndex == 255 || AxisMapMarkers[i].SquadIndex == SquadIndex))
+                MapMarkers[MapMarkers.Length] = AxisMapMarkers[i];
+            }
+            break;
+        case ALLIES_TEAM_INDEX:
+            for (i = 0; i < arraycount(AlliesMapMarkers); ++i)
+            {
+                MapMarkers[MapMarkers.Length] = AlliesMapMarkers[i];
+            }
+            break;
+        default:
+            break;
+    }
+
+    return MapMarkers;
+}
+
+simulated function array<MapMarker> GetFireSupportMapMarkersAtLocation(DHPlayer PC, vector WorldLocation)
+{
+    local int i;
+    local array<MapMarker> MapMarkers;
+    local float Distance, DistanceThreshold;
+
+    DistanceThreshold = class'DHUnits'.static.MetersToUnreal(class'DHMapMarker_ArtilleryHit'.default.VisibilityRange);
+
+    MapMarkers = GetMapMarkers(PC);
+
+    for (i = MapMarkers.Length - 1; i >= 0; --i)
+    {
+        Distance = VSize(MapMarkers[i].WorldLocation - WorldLocation);
+
+        if (IsMapMarkerExpired(MapMarkers[i]) ||
+            MapMarkers[i].MapMarkerClass == none ||
+            MapMarkers[i].MapMarkerClass.default.Type != MT_OnMapArtilleryRequest ||
+            Distance > DistanceThreshold)
+        {
+            MapMarkers.Remove(i, 1);
+            continue;
+        }
+    }
+
+    return MapMarkers;
+}
+
+simulated function bool IsMapMarkerExpired(MapMarker MM)
+{
+    return MM.ExpiryTime != -1 && MM.ExpiryTime <= ElapsedTime;
+}
+
+simulated function GetGlobalArtilleryMapMarkers(DHPlayer PC, out array<MapMarker> MapMarkers)
+{
+    local int i;
+    local DHPlayerReplicationInfo PRI;
+    local MapMarker Marker;
+    local bool bIsArtillerySpotter;
+
+    if (PC == none)
+    {
+        return;
+    }
+
+    PRI = DHPlayerReplicationInfo(PC.PlayerReplicationInfo);
+
+    if (PRI == none)
+    {
+        return;
+    }
+
+    bIsArtillerySpotter = PRI.IsArtillerySpotter();
+
+    switch (PC.GetTeamNum())
+    {
+        case AXIS_TEAM_INDEX:
+            for (i = 0; i < arraycount(AxisMapMarkers); ++i)
+            {
+                Marker = AxisMapMarkers[i];
+
+                if (!IsMapMarkerExpired(Marker)
+                    && Marker.MapMarkerClass != none
+                    && Marker.MapMarkerClass.static.CanSeeMarker(PRI, Marker)
+                    && Marker.MapMarkerClass.default.Type == MT_OnMapArtilleryRequest
+                    && !(bIsArtillerySpotter && Marker.SquadIndex == PRI.SquadIndex))
                 {
-                    Indices[Indices.Length] = i;
+                    MapMarkers[MapMarkers.Length] = Marker;
                 }
             }
             break;
         case ALLIES_TEAM_INDEX:
             for (i = 0; i < arraycount(AlliesMapMarkers); ++i)
             {
-                if (AlliesMapMarkers[i].MapMarkerClass != none &&
-                    (AlliesMapMarkers[i].ExpiryTime == -1 || AlliesMapMarkers[i].ExpiryTime > ElapsedTime) &&
-                    (AlliesMapMarkers[i].SquadIndex == 255 || AlliesMapMarkers[i].SquadIndex == SquadIndex))
+                Marker = AlliesMapMarkers[i];
+
+                if (!IsMapMarkerExpired(Marker)
+                    && Marker.MapMarkerClass != none
+                    && Marker.MapMarkerClass.static.CanSeeMarker(PRI, Marker)
+                    && Marker.MapMarkerClass.default.Type == MT_OnMapArtilleryRequest
+                    && !(bIsArtillerySpotter && Marker.SquadIndex == PRI.SquadIndex))
                 {
-                    Indices[Indices.Length] = i;
+                    MapMarkers[MapMarkers.Length] = Marker;
                 }
             }
+            break;
+        default:
             break;
     }
 }
 
-function int AddMapMarker(DHPlayerReplicationInfo PRI, class<DHMapMarker> MapMarkerClass, vector MapLocation)
+function int AddMapMarker(DHPlayerReplicationInfo PRI, class<DHMapMarker> MapMarkerClass, vector MapLocation, vector WorldLocation)
 {
     local int i;
     local MapMarker M;
 
-    if (PRI == none || PRI.Team == none || MapMarkerClass == none || !MapMarkerClass.static.CanBeUsed(self) || !MapMarkerClass.static.CanPlayerUse(PRI))
+    if (PRI == none || PRI.Team == none || MapMarkerClass == none || !MapMarkerClass.static.CanBeUsed(self) || !MapMarkerClass.static.CanPlaceMarker(PRI))
     {
         return -1;
     }
 
+    M.Author = PRI;
     M.MapMarkerClass = MapMarkerClass;
+    M.CreationTime = ElapsedTime;
 
     // Quantize map-space coordinates for transmission.
     M.LocationX = byte(255.0 * FClamp(MapLocation.X, 0.0, 1.0));
     M.LocationY = byte(255.0 * FClamp(MapLocation.Y, 0.0, 1.0));
+    M.WorldLocation = WorldLocation;
 
-    if (MapMarkerClass.default.bIsSquadSpecific)
-    {
-        M.SquadIndex = PRI.SquadIndex;
-    }
-    else
-    {
-        M.SquadIndex = -1;
-    }
+    M.SquadIndex = PRI.SquadIndex;
 
     if (MapMarkerClass.default.LifetimeSeconds != -1)
     {
@@ -1513,92 +1696,91 @@ function int AddMapMarker(DHPlayerReplicationInfo PRI, class<DHMapMarker> MapMar
     switch (PRI.Team.TeamIndex)
     {
         case AXIS_TEAM_INDEX:
-            if (MapMarkerClass.default.bShouldOverwriteGroup)
+            switch (MapMarkerClass.default.OverwritingRule)
             {
-                for (i = 0; i < arraycount(AxisMapMarkers); ++i)
-                {
-                    if (AxisMapMarkers[i].MapMarkerClass != none &&
-                        AxisMapMarkers[i].MapMarkerClass.default.GroupIndex == MapMarkerClass.default.GroupIndex &&
-                        AxisMapMarkers[i].SquadIndex == -1 || AxisMapMarkers[i].SquadIndex == PRI.SquadIndex)
+                case UNIQUE_PER_GROUP:
+                    for (i = 0; i < arraycount(AxisMapMarkers); ++i)
                     {
-                        AxisMapMarkers[i] = M;
-                        MapMarkerClass.static.OnMapMarkerPlaced(DHPlayer(PRI.Owner));
-                        return i;
+                        if (AxisMapMarkers[i].MapMarkerClass != none
+                          && AxisMapMarkers[i].MapMarkerClass.default.GroupIndex == MapMarkerClass.default.GroupIndex
+                          && (MapMarkerClass.default.Scope == SQUAD && AxisMapMarkers[i].SquadIndex == PRI.SquadIndex)
+                            || MapMarkerClass.default.Scope == TEAM)
+                        {
+                            AxisMapMarkers[i] = M;
+                            MapMarkerClass.static.OnMapMarkerPlaced(DHPlayer(PRI.Owner), M);
+                            return i;
+                        }
                     }
-                }
-            }
+                    break;
 
-            if (MapMarkerClass.default.bIsUnique)
-            {
-                for (i = 0; i < arraycount(AxisMapMarkers); ++i)
-                {
-                    if (AxisMapMarkers[i].MapMarkerClass == MapMarkerClass &&
-                        (!MapMarkerClass.default.bIsSquadSpecific ||
-                         (MapMarkerClass.default.bIsSquadSpecific && AxisMapMarkers[i].SquadIndex == PRI.SquadIndex)))
+                case UNIQUE:
+                    for (i = 0; i < arraycount(AxisMapMarkers); ++i)
                     {
-                        AxisMapMarkers[i] = M;
-                        MapMarkerClass.static.OnMapMarkerPlaced(DHPlayer(PRI.Owner));
-                        return i;
+                        if (AxisMapMarkers[i].MapMarkerClass == MapMarkerClass
+                          && (MapMarkerClass.default.Scope == SQUAD && AxisMapMarkers[i].SquadIndex == PRI.SquadIndex)
+                            || MapMarkerClass.default.Scope == TEAM)
+                        {
+                            AxisMapMarkers[i] = M;
+                            MapMarkerClass.static.OnMapMarkerPlaced(DHPlayer(PRI.Owner), M);
+                            return i;
+                        }
                     }
-                }
+                    break;
+                case OFF:
+                    break;
             }
-
             for (i = 0; i < arraycount(AxisMapMarkers); ++i)
             {
-                if (AxisMapMarkers[i].MapMarkerClass == none ||
-                    (AxisMapMarkers[i].ExpiryTime != -1 &&
-                     AxisMapMarkers[i].ExpiryTime <= ElapsedTime))
+                if (AxisMapMarkers[i].MapMarkerClass == none || IsMapMarkerExpired(AxisMapMarkers[i]))
                 {
                     AxisMapMarkers[i] = M;
-                    MapMarkerClass.static.OnMapMarkerPlaced(DHPlayer(PRI.Owner));
+                    MapMarkerClass.static.OnMapMarkerPlaced(DHPlayer(PRI.Owner), M);
                     return i;
                 }
             }
             break;
-
         case ALLIES_TEAM_INDEX:
-            if (MapMarkerClass.default.bShouldOverwriteGroup)
+            switch (MapMarkerClass.default.OverwritingRule)
             {
-                for (i = 0; i < arraycount(AlliesMapMarkers); ++i)
-                {
-                    if (AlliesMapMarkers[i].MapMarkerClass != none &&
-                        AlliesMapMarkers[i].MapMarkerClass.default.GroupIndex == MapMarkerClass.default.GroupIndex &&
-                        AlliesMapMarkers[i].SquadIndex == -1 || AlliesMapMarkers[i].SquadIndex == PRI.SquadIndex)
+                case UNIQUE_PER_GROUP:
+                    for (i = 0; i < arraycount(AlliesMapMarkers); ++i)
                     {
-                        AlliesMapMarkers[i] = M;
-                        MapMarkerClass.static.OnMapMarkerPlaced(DHPlayer(PRI.Owner));
-                        return i;
+                        if (AlliesMapMarkers[i].MapMarkerClass != none &&
+                            AlliesMapMarkers[i].MapMarkerClass.default.GroupIndex == MapMarkerClass.default.GroupIndex
+                            && (MapMarkerClass.default.Scope == SQUAD && AlliesMapMarkers[i].SquadIndex == PRI.SquadIndex)
+                            || MapMarkerClass.default.Scope == TEAM)
+                        {
+                            AlliesMapMarkers[i] = M;
+                            MapMarkerClass.static.OnMapMarkerPlaced(DHPlayer(PRI.Owner), M);
+                            return i;
+                        }
                     }
-                }
-            }
-
-            if (MapMarkerClass.default.bIsUnique)
-            {
-                for (i = 0; i < arraycount(AlliesMapMarkers); ++i)
-                {
-                    if (AlliesMapMarkers[i].MapMarkerClass == MapMarkerClass &&
-                        (!MapMarkerClass.default.bIsSquadSpecific ||
-                         (MapMarkerClass.default.bIsSquadSpecific && AlliesMapMarkers[i].SquadIndex == PRI.SquadIndex)))
+                    break;
+                case UNIQUE:
+                    for (i = 0; i < arraycount(AlliesMapMarkers); ++i)
                     {
-                        AlliesMapMarkers[i] = M;
-                        MapMarkerClass.static.OnMapMarkerPlaced(DHPlayer(PRI.Owner));
-                        return i;
+                        if (AlliesMapMarkers[i].MapMarkerClass == MapMarkerClass
+                          && (MapMarkerClass.default.Scope == TEAM
+                          || (MapMarkerClass.default.Scope == SQUAD && AlliesMapMarkers[i].SquadIndex == PRI.SquadIndex)))
+                        {
+                            AlliesMapMarkers[i] = M;
+                            MapMarkerClass.static.OnMapMarkerPlaced(DHPlayer(PRI.Owner), M);
+                            return i;
+                        }
                     }
-                }
+                    break;
+                case OFF:
+                        break;
             }
-
             for (i = 0; i < arraycount(AlliesMapMarkers); ++i)
             {
-                if (AlliesMapMarkers[i].MapMarkerClass == none ||
-                    (AlliesMapMarkers[i].ExpiryTime != -1 &&
-                     AlliesMapMarkers[i].ExpiryTime <= ElapsedTime))
+                if (AlliesMapMarkers[i].MapMarkerClass == none || IsMapMarkerExpired(AlliesMapMarkers[i]))
                 {
                     AlliesMapMarkers[i] = M;
-                    MapMarkerClass.static.OnMapMarkerPlaced(DHPlayer(PRI.Owner));
+                    MapMarkerClass.static.OnMapMarkerPlaced(DHPlayer(PRI.Owner), M);
                     return i;
                 }
             }
-            break;
     }
 
     return -1;
@@ -1645,6 +1827,37 @@ function ClearSquadMapMarkers(int TeamIndex, int SquadIndex)
                 if (AlliesMapMarkers[i].SquadIndex == SquadIndex)
                 {
                     AlliesMapMarkers[i].MapMarkerClass = none;
+                }
+            }
+            break;
+    }
+}
+
+// This is stupid, but for now
+// there can only be 1 active off-map artillery strike anyway
+function InvalidateOngoingBarrageMarker(int TeamIndex)
+{
+    local int i;
+
+    switch (TeamIndex)
+    {
+        case ALLIES_TEAM_INDEX:
+            for (i = 0; i < arraycount(AlliesMapMarkers); i++)
+            {
+                if (AlliesMapMarkers[i].MapMarkerClass != none
+                  && AlliesMapMarkers[i].MapMarkerClass.default.Type == MT_ArtilleryBarrage)
+                {
+                    AlliesMapMarkers[i].ExpiryTime = 0;
+                }
+            }
+            break;
+        case AXIS_TEAM_INDEX:
+            for (i = 0; i < arraycount(AxisMapMarkers); i++)
+            {
+                if (AxisMapMarkers[i].MapMarkerClass != none
+                  && AxisMapMarkers[i].MapMarkerClass.default.Type == MT_ArtilleryBarrage)
+                {
+                    AxisMapMarkers[i].ExpiryTime = 0;
                 }
             }
             break;
@@ -1719,8 +1932,8 @@ simulated function vector GetWorldCoords(float X, float Y)
 
     MapScale = FMax(1.0, Abs((SouthWestBounds - NorthEastBounds).X));
     MapCenter = NorthEastBounds + ((SouthWestBounds - NorthEastBounds) * 0.5);
-    WorldLocation.X = ((0.5 - X) * MapScale);
-    WorldLocation.Y = ((0.5 - Y) * MapScale);
+    WorldLocation.X = (0.5 - X) * MapScale;
+    WorldLocation.Y = (0.5 - Y) * MapScale;
     WorldLocation = GetAdjustedHudLocation(WorldLocation, true);
     WorldLocation += MapCenter;
 
@@ -1780,6 +1993,7 @@ simulated function EArtilleryTypeError GetArtilleryTypeError(DHPlayer PC, int Ar
 {
     local ArtilleryTypeInfo ATI;
     local DH_LevelInfo LI;
+    local class<DHArtillery> ArtilleryClass;
 
     LI = class'DH_LevelInfo'.static.GetInstance(Level);
 
@@ -1792,9 +2006,16 @@ simulated function EArtilleryTypeError GetArtilleryTypeError(DHPlayer PC, int Ar
         return ERROR_Fatal;
     }
 
-    if (!LI.ArtilleryTypes[ArtilleryTypeIndex].ArtilleryClass.static.CanBeRequestedBy(PC))
+    ArtilleryClass = LI.ArtilleryTypes[ArtilleryTypeIndex].ArtilleryClass;
+
+    if (!ArtilleryClass.static.HasQualificationToRequest(PC))
     {
         return ERROR_Unqualified;
+    }
+
+    if (!ArtilleryClass.static.HasEnoughSquadMembersToRequest(PC))
+    {
+        return ERROR_NotEnoughSquadMembers;
     }
 
     ATI = ArtilleryTypeInfos[ArtilleryTypeIndex];
@@ -1865,7 +2086,7 @@ function SetDangerZoneNeutral(byte Factor, optional bool bPostponeUpdate)
 
 function SetDangerZoneBalance(int Factor, optional bool bPostponeUpdate)
 {
-    DangerZoneBalance = (128 - Clamp(Factor, -127, 127));
+    DangerZoneBalance = 128 - Clamp(Factor, -127, 127);
 
     if (!bPostponeUpdate)
     {
@@ -1955,13 +2176,203 @@ function SetSurrenderVoteInProgress(byte TeamIndex, bool bInProgress)
     }
 }
 
+//==============================================================================
+// MINE & NO ARTY VOLUMES
+//==============================================================================
+
+function RegisterMineVolumes()
+{
+    local DHMineVolume MV;
+    local int Index;
+
+    if (Role != ROLE_Authority)
+    {
+        return;
+    }
+
+    foreach AllActors(class'DHMineVolume', MV)
+    {
+        if (Index >= MINE_VOLUMES_MAX)
+        {
+            Warn("Too many mine volumes! Only" @ MINE_VOLUMES_MAX @ "minefield activation states can be tracked at once.");
+        }
+
+        MV.Index = Index++;
+    }
+}
+
+simulated function RegisterNoArtyVolumes()
+{
+    local RONoArtyVolume NAV;
+
+    DHNoArtyVolumes.Length = 0;
+
+    foreach AllActors(class'RONoArtyVolume', NAV)
+    {
+        DHNoArtyVolumes[DHNoArtyVolumes.Length] = NAV;
+    }
+}
+
+// This was, at one point, inside the DHVolumeTest, but in order to make
+// client-side polling possible, we have to update the statuses here and
+// replicate the "active" status to all clients.
+function UpdateNoArtyVolumeStatuses()
+{
+    local int i;
+    local DHSpawnPoint SP;
+    local DHObjective O;
+    local byte bIsActive;
+
+    for (i = 0; i < DHNoArtyVolumes.Length; ++i)
+    {
+        SP = DHSpawnPoint(DHNoArtyVolumes[i].AssociatedActor);
+        O = DHObjective(DHNoArtyVolumes[i].AssociatedActor);
+
+        bIsActive = 0;
+
+        if (SP != none)
+        {
+            if (SP.IsActive())
+            {
+                bIsActive = 1;
+            }
+        }
+        else if (O != none)
+        {
+            if (O.IsActive())
+            {
+                bIsActive = 1;
+            }
+        }
+        else
+        {
+            bIsActive = 1;
+        }
+
+        DHNoArtyVolumeIsActives[i] = bIsActive;
+    }
+}
+
+simulated function bool IsMineVolumeActive(DHMineVolume MineVolume)
+{
+    if (MineVolume == none || MineVolume.Index < 0 || MineVolume.Index >= MINE_VOLUMES_MAX)
+    {
+        return false;
+    }
+
+    return DHMineVolumeIsActives[MineVolume.Index] == 1;
+}
+
+simulated function bool IsNoArtyVolumeActive(RONoArtyVolume NoArtyVolume)
+{
+    local int i;
+
+    for (i = 0; i < DHNoArtyVolumes.Length; ++i)
+    {
+        if (NoArtyVolume == DHNoArtyVolumes[i])
+        {
+            return DHNoArtyVolumeIsActives[i] == 1;
+        }
+    }
+
+    return false;
+}
+
+simulated function array<SAvailableArtilleryInfoEntry> GetTeamOffMapFireSupportCountRemaining(int TeamIndex)
+{
+    local int i, ArtilleryCount, ParadropCount, AirstrikesCount;
+    local DH_LevelInfo LI;
+    local array<SAvailableArtilleryInfoEntry> Result;
+    local SAvailableArtilleryInfoEntry Entry;
+
+    LI = class'DH_LevelInfo'.static.GetInstance(Level);
+
+    if (LI == none)
+    {
+        return Result;
+    }
+
+    for (i = 0; i < LI.ArtilleryTypes.Length; ++i)
+    {
+        if (LI.ArtilleryTypes[i].TeamIndex == TeamIndex && ArtilleryTypeInfos[i].bIsAvailable)
+        {
+            switch(LI.ArtilleryTypes[i].ArtilleryClass.default.ArtilleryType)
+            {
+                case ArtyType_Barrage:
+                    ArtilleryCount += ArtilleryTypeInfos[i].Limit - ArtilleryTypeInfos[i].UsedCount;
+                    break;
+                case ArtyType_Paradrop:
+                    ParadropCount += ArtilleryTypeInfos[i].Limit - ArtilleryTypeInfos[i].UsedCount;
+                    break;
+                case ArtyType_Airstrikes:
+                    AirstrikesCount += ArtilleryTypeInfos[i].Limit - ArtilleryTypeInfos[i].UsedCount;
+                    break;
+            }
+        }
+    }
+
+    if (ArtilleryCount > 0)
+    {
+        Entry.Type = ArtyType_Barrage;
+        Entry.Count = ArtilleryCount;
+        Result[Result.Length] = Entry;
+    }
+
+    if (ParadropCount > 0)
+    {
+        Entry.Type = ArtyType_Paradrop;
+        Entry.Count = ParadropCount;
+        Result[Result.Length] = Entry;
+    }
+
+    if (AirstrikesCount > 0)
+    {
+        Entry.Type = ArtyType_Airstrikes;
+        Entry.Count = AirstrikesCount;
+        Result[Result.Length] = Entry;
+    }
+
+    return Result;
+}
+
+function AddKillForTeam(int TeamIndex)
+{
+    if (TeamIndex >= 0 && TeamIndex < arraycount(TeamScores))
+    {
+        ++TeamScores[TeamIndex].Kills;
+    }
+}
+
+function AddDeathForTeam(int TeamIndex)
+{
+    if (TeamIndex >= 0 && TeamIndex < arraycount(TeamScores))
+    {
+        ++TeamScores[TeamIndex].Deaths;
+    }
+}
+
+function ResetTeamScores()
+{
+    local int i, j;
+
+    for (i = 0; i < arraycount(TeamScores); ++i)
+    {
+        TeamScores[i].Kills = 0;
+        TeamScores[i].Deaths = 0;
+
+        for (j = 0; j < arraycount(TeamScores[i].CategoryScores); ++j)
+        {
+            TeamScores[i].CategoryScores[j] = 0;
+        }
+    }
+}
+
 defaultproperties
 {
     bNetNotify=true
     bAllChatEnabled=true
     AlliesVictoryMusicIndex=-1
     AxisVictoryMusicIndex=-1
-    ArtilleryTargetDistanceThreshold=15088 //250 meters in UU
     ForceScaleText="Size"
     ReinforcementsInfiniteText="Infinite"
     RoundWinnerTeamIndex=255
@@ -1973,7 +2384,6 @@ defaultproperties
     ConstructionClassNames(1)="DH_Construction.DHConstruction_PlatoonHQ"
     ConstructionClassNames(2)="DH_Construction.DHConstruction_Resupply_Players"
     ConstructionClassNames(3)="DH_Construction.DHConstruction_Resupply_Vehicles"
-    // ConstructionClassNames(4)="DH_Construction.DHConstruction_Radio"
     ConstructionClassNames(4)="DH_Construction.DHConstruction_VehiclePool"
 
     // Obstacles
@@ -1994,12 +2404,12 @@ defaultproperties
     ConstructionClassNames(15)="DH_Construction.DHConstruction_Sandbags_Line"
     ConstructionClassNames(16)="DH_Construction.DHConstruction_Sandbags_Crescent"
     ConstructionClassNames(17)="DH_Construction.DHConstruction_Sandbags_Bunker"
-    ConstructionClassNames(18)="DH_Construction.DHConstruction_Watchtower"
-    ConstructionClassNames(19)="DH_Construction.DHConstruction_GrenadeCrate"
-    //ConstructionClassNames(17)="DH_Construction.DHConstruction_MortarPit"
-    ConstructionClassNames(20)="DH_Construction.DHConstruction_DragonsTooth"
-    ConstructionClassNames(21)="DH_Construction.DHConstruction_AntiTankCrate"
-    //ConstructionClassNames(19)="DH_Construction.DHConstruction_WoodFence"
+    ConstructionClassNames(18)="DH_Construction.DHConstruction_GrenadeCrate"
+    ConstructionClassNames(19)="DH_Construction.DHConstruction_DragonsTooth"
+    ConstructionClassNames(20)="DH_Construction.DHConstruction_AntiTankCrate"
+
+    // Artillery
+    ConstructionClassNames(22)="DH_Construction.DHConstruction_Artillery"
 
     // Map Markers
     MapMarkerClassNames(0)="DH_Engine.DHMapMarker_Squad_Move"

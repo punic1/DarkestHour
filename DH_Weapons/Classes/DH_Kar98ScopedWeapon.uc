@@ -1,20 +1,20 @@
 //==============================================================================
 // Darkest Hour: Europe '44-'45
-// Darklight Games (c) 2008-2021
+// Darklight Games (c) 2008-2022
 //==============================================================================
 
 class DH_Kar98ScopedWeapon extends DHBoltActionWeapon;
 
 defaultproperties
 {
-    ItemName="Karabiner 98k"
+    ItemName="Karabiner 98k (ZF39)"
     FireModeClass(0)=class'DH_Weapons.DH_Kar98ScopedFire'
     FireModeClass(1)=class'DH_Weapons.DH_Kar98ScopedMeleeFire'
     AttachmentClass=class'DH_Weapons.DH_Kar98ScopedAttachment'
     PickupClass=class'DH_Weapons.DH_Kar98ScopedPickup'
 
     Mesh=SkeletalMesh'DH_Kar98_1st.kar98k-scoped-mesh'
-    HighDetailOverlay=shader'Weapons1st_tex.Rifles.k98_sniper_s'
+    HighDetailOverlay=Shader'Weapons1st_tex.Rifles.k98_sniper_s'
     bUseHighDetailOverlayIndex=true
     HighDetailOverlayIndex=2
 
@@ -29,10 +29,10 @@ defaultproperties
     ScopePortalFOV=8      //very hard to find information on ZF39's field of view, but some places mention 160mm which is roughly 9 degrees
     ScopePortalFOVHigh=8  //however, it is made lower to make scope appear a bit further from the camera, for better visual appearance
     LensMaterialID=5
-    	
+
     PlayerIronsightFOV=60.0
     bUsesIronsightFOV=true
-	
+
     ScopeOverlaySize=0.62
 
     MaxNumPrimaryMags=13

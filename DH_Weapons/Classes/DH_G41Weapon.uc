@@ -1,32 +1,21 @@
 //==============================================================================
 // Darkest Hour: Europe '44-'45
-// Darklight Games (c) 2008-2021
+// Darklight Games (c) 2008-2022
 //==============================================================================
 
 class DH_G41Weapon extends DHBoltActionWeapon;
 
-// Modified to add hint about weapon's two clip loading capacity
-simulated function BringUp(optional Weapon PrevWeapon)
-{
-    super.BringUp(PrevWeapon);
-
-    if (Instigator != none && DHPlayer(Instigator.Controller) != none)
-    {
-        DHPlayer(Instigator.Controller).QueueHint(22, true);
-    }
-}
-
 defaultproperties
 {
     ItemName="Gewehr 41(W)"
-    SwayModifyFactor=0.93 // +0.13 because it was a heavy, disbalanced and awkward rifle
+    SwayModifyFactor=0.83 // +0.13 because it was a heavy, disbalanced and awkward rifle
     FireModeClass(0)=class'DH_Weapons.DH_G41Fire'
     FireModeClass(1)=class'DH_Weapons.DH_G41MeleeFire'
     AttachmentClass=class'DH_Weapons.DH_G41Attachment'
     PickupClass=class'DH_Weapons.DH_G41Pickup'
 
     Mesh=SkeletalMesh'DH_G41_1st.G41_mesh'
-    HighDetailOverlay=shader'Weapons1st_tex2.Rifles.G41_S'
+    HighDetailOverlay=Shader'Weapons1st_tex2.Rifles.G41_S'
     bUseHighDetailOverlayIndex=true
     HighDetailOverlayIndex=2
 

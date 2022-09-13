@@ -1,6 +1,6 @@
 //==============================================================================
 // Darkest Hour: Europe '44-'45
-// Darklight Games (c) 2008-2021
+// Darklight Games (c) 2008-2022
 //==============================================================================
 
 class DH_ShermanFireFlyCannon extends DHVehicleCannon;
@@ -13,7 +13,7 @@ defaultproperties
     Skins(1)=Texture'DH_VehiclesUK_tex.ext_vehicles.FireFly_armor_ext'
     Skins(2)=Texture'DH_VehiclesUS_tex.int_vehicles.Sherman_turret_int'
     WeaponAttachOffset=(X=0.0,Y=1.78,Z=4.77)
-    CollisionStaticMesh=StaticMesh'DH_allies_vehicles_stc.Sherman.Firefly_turret_Col'
+    CollisionStaticMeshes(0)=(CollisionStaticMesh=StaticMesh'DH_allies_vehicles_stc.Sherman.Firefly_turret_Col')
 
     // Turret armor
     FrontArmorFactor=7.6
@@ -52,7 +52,7 @@ defaultproperties
     MaxPrimaryAmmo=48
     MaxSecondaryAmmo=5
     MaxTertiaryAmmo=24
-    SecondarySpread=0.006
+    SecondarySpread=0.002 // was originally 0.006 but was found to be too much, APDS should have a half chance of hitting a frontal panther turret at 400 yards, it now does.
     TertiarySpread=0.00156
 
     // Coaxial MG ammo

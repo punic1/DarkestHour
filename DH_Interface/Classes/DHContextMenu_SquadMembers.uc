@@ -1,6 +1,6 @@
 //==============================================================================
 // Darkest Hour: Europe '44-'45
-// Darklight Games (c) 2008-2021
+// Darklight Games (c) 2008-2022
 //==============================================================================
 
 class DHContextMenu_SquadMembers extends DHContextMenu;
@@ -186,7 +186,7 @@ protected function ProcessEntry(int EntryIndex, GUIComponent Component)
             return;
 
         case 5:
-            if (!SelectedPRI.IsAssistantLeader())
+            if (!SelectedPRI.IsASL())
             {
                 PC.ServerSquadMakeAssistant(SelectedPRI);
             }
@@ -194,7 +194,7 @@ protected function ProcessEntry(int EntryIndex, GUIComponent Component)
             return;
 
         case 6:
-            if (SelectedPRI.IsAssistantLeader())
+            if (SelectedPRI.IsASL())
             {
                 PC.ServerSquadMakeAssistant(none);
             }

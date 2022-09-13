@@ -1,6 +1,6 @@
 //==============================================================================
 // Darkest Hour: Europe '44-'45
-// Darklight Games (c) 2008-2021
+// Darklight Games (c) 2008-2022
 //==============================================================================
 
 class DHSpawnPoint_SquadRallyPoint extends DHSpawnPointBase
@@ -54,7 +54,7 @@ var int IsExposedPenaltySeconds;
 // Attachments
 var class<DHResupplyAttachment>         ResupplyAttachmentClass;
 var DHResupplyAttachment                ResupplyAttachment;
-var DHResupplyAttachment.EResupplyType  ResupplyType;
+var DHResupplyStrategy.EResupplyType    ResupplyType;
 var float                               ResupplyAttachmentCollisionRadius;
 var float                               ResupplyAttachmentCollisionHeight;
 var float                               ResupplyTime;
@@ -226,7 +226,7 @@ state Active
 
         if (MetricsObject != none)
         {
-            MetricsObject.IsEstablished = true;
+            MetricsObject.bIsEstablished = true;
         }
 
         OnUpdated();
@@ -404,6 +404,9 @@ function UpdateAppearance()
             case NATION_Poland:
                 NewStaticMesh = StaticMesh'DH_Construction_stc.Backpacks.POL_backpack_established';
                 break;
+            case NATION_Czechoslovakia:
+                NewStaticMesh = StaticMesh'DH_Construction_stc.Backpacks.CS_backpack_established';
+                break;
             default:
                 NewStaticMesh = StaticMesh'DH_Construction_stc.Backpacks.USA_backpack_established';
                 break;
@@ -433,6 +436,9 @@ function UpdateAppearance()
                 break;
             case NATION_Poland:
                 NewStaticMesh = StaticMesh'DH_Construction_stc.Backpacks.POL_backpack';
+                break;
+            case NATION_Czechoslovakia:
+                NewStaticMesh = StaticMesh'DH_Construction_stc.Backpacks.CS_backpack';
                 break;
             default:
                 NewStaticMesh = StaticMesh'DH_Construction_stc.Backpacks.USA_backpack';
@@ -571,6 +577,20 @@ function Destroyed()
     {
         ResupplyAttachment.Destroy();
     }
+}
+
+simulated function bool CanPlayerSpawnImmediately(DHPlayer PC)
+{
+    return PC != none
+        && PC.IsSquadLeader()
+        && SpawnsRemaining == 1
+        && PC.SquadReplicationInfo != none
+        && PC.SquadReplicationInfo.GetMemberCount(PC.GetTeamNum(), PC.GetSquadIndex()) > 1;
+}
+
+simulated function int GetDesirability()
+{
+    return 4;
 }
 
 defaultproperties
