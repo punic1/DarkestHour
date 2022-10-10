@@ -92,6 +92,9 @@ var float   EngineFireChance;
 var     int             NumDeflections;             // so it won't infinitely deflect, getting stuck in a loop
 var     float           DampenFactor;               // the smaller the number, the less the projectile will move after deflection
 var     float           DampenFactorParallel;
+var     bool            bDeflectAOI;                // when true, round can be deflected if AOI is too steep (see DeflectAOI)
+var     float           DeflectAOI;                 // if the round impacts armor with >= this angle of incidence, it will deflect
+var     bool            bRoundDeflected;            // set to true when the round deflects
 
 // Impact sounds
 var     sound           VehicleHitSound;            // sound of this shell penetrating a vehicle
@@ -830,7 +833,7 @@ simulated function FailToPenetrateArmor(vector HitLocation, vector HitNormal, Ac
     }
     // Round explodes on vehicle armor
     // TODO: just a note that this does the same as calling SpawnExplosionEffects() except this plays VehicleDeflectSound/ShellDeflectEffectClass instead of VehicleHitSound/ShellHitVehicleEffectClass
-    else if (bExplodesOnArmor)
+    else if (bExplodesOnArmor && !bRoundDeflected)
     {
         if (bDebuggingText && Role == ROLE_Authority)
         {
@@ -1130,7 +1133,7 @@ simulated function HandleShellDebug(vector RealHitLocation)
     {
         ShellDropUnits = TraceHitLoc.Z - RealHitLocation.Z;
         Log("Shell drop =" @ class'DHUnits'.static.UnrealToMeters(ShellDropUnits) * 100.0 $ "cm /" @ ShellDropUnits / ScaleFactor * 12.0 @ "inches"
-            @ "TraceZ =" @ TraceHitLoc.Z @ " RealZ =" @ RealHitLocation.Z);
+            @ "TraceZ =" @ TraceHitLoc.Z @ " RealZ =" @ RealHitLocation.Z @ "Distance=" @ class'DHUnits'.static.UnrealToMeters(VSize(LaunchLocation - RealHitLocation)) $ "m");
     }
 }
 
