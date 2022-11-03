@@ -97,6 +97,7 @@ function Timer()
     local float        Theta;
     local float        Radius;
     const Tau = 6.28318530718;
+    local DHCommandMenu_FireMissionType FMT;
 
     // Cancel the strike if the arty officer has switched teams or left the server, or if the round is over
     if (Controller(Owner) == none || Controller(Owner).GetTeamNum() != TeamIndex || !(ROTeamGame(Level.Game) != none && ROTeamGame(Level.Game).IsInState('RoundInPlay')))
@@ -124,6 +125,8 @@ function Timer()
         }
     }
 
+    
+
     // If not a valid strike then destroy this actor & any recent shell it spawned
     if (bInvalid)
     {
@@ -140,11 +143,12 @@ function Timer()
     // Make sure this salvo hasn't finished & then spawn an arty shell, with randomised spread based on the map's arty settings for the team
     if (ShellCounter < BatteryCount)
     {
-        Radius = class'DHUnits'.static.MetersToUnreal(FRand() * 8);
         Theta = FRand() * TAU;
         RandomSpread.X = Sin(Theta) * Radius;
         RandomSpread.Y = Cos(Theta) * Radius;
 
+        //Dynamic code for setting up specific dispersion on the type, using the FireMissionType menu items.
+        
         // Altered to spawn shell a standard approx 50m above strike location & to use a different method of setting shell's InstigatorController
         LastSpawnedShell = Spawn(class'DH_Kz8cmGrW42ProjectileHE',,, Location + vect(0.0, 0.0, 3000.0) + RandomSpread, rotator(PhysicsVolume.Gravity));
 

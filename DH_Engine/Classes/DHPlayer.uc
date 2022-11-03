@@ -6703,11 +6703,11 @@ function ServerSquadLeaderVolunteer(int TeamIndex, int SquadIndex)
     }
 }
 
-function ServerRequestArtillery(DHRadio Radio, int ArtilleryTypeIndex)
+function ServerRequestArtillery(DHRadio Radio, int ArtilleryTypeIndex, int FireMissionIndex)
 {
     if (Radio != none && Pawn != none)
     {
-        Radio.RequestArtillery(Pawn, ArtilleryTypeIndex);
+        Radio.RequestArtillery(Pawn, ArtilleryTypeIndex, FireMissionIndex);
     }
 }
 

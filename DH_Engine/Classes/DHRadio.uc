@@ -148,7 +148,7 @@ simulated function bool IsPlayerQualified(DHPlayer PC)
     return PC != none && PC.IsSquadLeader();
 }
 
-function RequestArtillery(Pawn Sender, int ArtilleryTypeIndex)
+function RequestArtillery(Pawn Sender, int ArtilleryTypeIndex,  int FireMissionIndex)
 {
     local DHPlayer PC;
 
@@ -164,6 +164,7 @@ function RequestArtillery(Pawn Sender, int ArtilleryTypeIndex)
     Request.Sender = PC;
     Request.ArtilleryTypeIndex = ArtilleryTypeIndex;
     Request.Location = PC.SavedArtilleryCoords;
+    Request.FireMissionIndex = FireMissionIndex;
 
     GotoState('Requesting');
 }

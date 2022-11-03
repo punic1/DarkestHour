@@ -9,6 +9,7 @@ var int                 TeamIndex;
 var int                 ArtilleryTypeIndex;
 var vector              Location;
 var DHPlayer            Sender; // TODO: objects holding refs to actors = bad news, use ROID?
+var int                 FireMissionIndex;
 
 simulated function class<DHArtillery> GetArtilleryClass()
 {

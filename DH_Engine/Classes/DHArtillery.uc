@@ -17,6 +17,13 @@ var Material                    MenuIcon;
 var protected int               TeamIndex;
 var PlayerController            Requester;
 
+struct FireMission
+{
+    var string MenuName;
+};
+
+var array<Firemission> FireMissions;
+var int FireMissionIndex;
 var bool                        bCanBeCancelled;
 var int                         RequiredSquadMemberCount;
 
@@ -27,6 +34,8 @@ replication
     reliable if (bNetDirty && Role == ROLE_Authority)
         TeamIndex, Requester;
 }
+
+function Setup();
 
 function PostBeginPlay()
 {

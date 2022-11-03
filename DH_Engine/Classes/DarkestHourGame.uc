@@ -5696,6 +5696,7 @@ function ArtilleryResponse RequestArtillery(DHArtilleryRequest Request)
     {
         // No errors encountered evaluating response, so spawn the artillery actor.
         Response.ArtilleryActor = Spawn(DHLevelInfo.ArtilleryTypes[Request.ArtilleryTypeIndex].ArtilleryClass, Request.Sender,, Request.Location);
+        
 
         if (Response.ArtilleryActor == none)
         {
@@ -5706,6 +5707,10 @@ function ArtilleryResponse RequestArtillery(DHArtilleryRequest Request)
         }
         else
         {
+        
+            Response.ArtilleryActor.FireMissionIndex = Request.FireMissionIndex;
+            Response.ArtilleryActor.Setup();
+
             // Update tracking statistics.
             GRI.ArtilleryTypeInfos[Request.ArtilleryTypeIndex].UsedCount += 1;
 
@@ -5781,7 +5786,7 @@ defaultproperties
     RussianNames(13)="Telly Savalas"
     RussianNames(14)="Audie Murphy"
     RussianNames(15)="George Baker"
-    GermanNames(0)="Günther Liebing"
+    GermanNames(0)="Gï¿½nther Liebing"
     GermanNames(1)="Heinz Werner"
     GermanNames(2)="Rudolf Giesler"
     GermanNames(3)="Seigfried Hauber"
@@ -5790,10 +5795,10 @@ defaultproperties
     GermanNames(6)="Willi Eiken"
     GermanNames(7)="Wolfgang Steyer"
     GermanNames(8)="Rolf Steiner"
-    GermanNames(9)="Anton Müller"
+    GermanNames(9)="Anton Mï¿½ller"
     GermanNames(10)="Klaus Triebig"
-    GermanNames(11)="Hans Grüschke"
-    GermanNames(12)="Wilhelm Krüger"
+    GermanNames(11)="Hans Grï¿½schke"
+    GermanNames(12)="Wilhelm Krï¿½ger"
     GermanNames(13)="Herrmann Dietrich"
     GermanNames(14)="Erich Klein"
     GermanNames(15)="Horst Altmann"

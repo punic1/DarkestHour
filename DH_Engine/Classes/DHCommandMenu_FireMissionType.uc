@@ -6,6 +6,7 @@
 class DHCommandMenu_FireMissionType extends DHCommandMenu;
 
 var DHRadio Radio;
+var DH_LevelInfo LevelInfo;
 
 var localized string FireMissionSmall;
 var localized string FireMissionMedium;
@@ -13,10 +14,23 @@ var localized string FireMissionLarge;
 
 function Setup()
 {
+    local int i;
+    local Option O;
+    local class<DHArtillery> ArtilleryClass;
+    
+    LevelInfo = class'DH_LevelInfo'.static.GetInstance(Interaction.ViewportOwner.Actor.Level);
     Radio = DHRadio(MenuObject);
+    ArtilleryClass = LevelInfo.ArtilleryTypes[MenuInteger].ArtilleryClass;
 
+    for (i = 0; i < ArtilleryClass.default.FireMissions.Length ; ++i)
+    {
+        O.ActionText = ArtilleryClass.default.FireMissions[i].MenuName;
+        Options[Options.Length] = O;
+    }
+    
     super.Setup();
 }
+
 
 function OnSelect(int Index, vector Location)
 {
@@ -24,23 +38,12 @@ function OnSelect(int Index, vector Location)
     
     PC = GetPlayerController();
 
-    switch (Index)
-    {
-        case 0:// Fire mission dependent upon artillery class
-            PC.ServerRequestArtillery(Radio, MenuInteger);
-            break;
-        case 1:// Fire mission dependent upon artillery class
-            PC.ServerRequestArtillery(Radio, MenuInteger);
-            break;
-        case 2:// Fire mission dependent upon artillery class
-            PC.ServerRequestArtillery(Radio, MenuInteger);
-            break;
-    }
+    PC.ServerRequestArtillery(Radio, MenuInteger, Index);
+    Interaction.Hide();
+
 }
 
 defaultproperties
 {
-    Options(0)=(ActionText="Fire-mission TRP",Material=Texture'DH_InterfaceArt2_tex.Icons.Artillery')
-    Options(1)=(ActionText="Fire-mission Supressive",Material=Texture'DH_InterfaceArt2_tex.Icons.Artillery')
-    Options(2)=(ActionText="Fire-mission Barrage",Material=Texture'DH_InterfaceArt2_tex.Icons.Artillery')
+
 }
