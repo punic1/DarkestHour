@@ -7,16 +7,16 @@ class DHCommandMenu_FireMissionType extends DHCommandMenu;
 
 var DHRadio Radio;
 
-var localized string FiremissionSmall;
-var localized string FiremissionMedium;
-var localized string FiremissionLarge;
+var localized string FireMissionSmall;
+var localized string FireMissionMedium;
+var localized string FireMissionLarge;
 
 function Setup()
 {
     Radio = DHRadio(MenuObject);
 
+    super.Setup();
 }
-
 
 function OnSelect(int Index, vector Location)
 {
@@ -24,23 +24,23 @@ function OnSelect(int Index, vector Location)
     
     PC = GetPlayerController();
 
-    switch (index)
+    switch (Index)
     {
-        Case 0:// Firemission dependant apon artillery class
+        case 0:// Fire mission dependent upon artillery class
             PC.ServerRequestArtillery(Radio, MenuInteger);
-        Case 1:// Firemission dependant apon artillery class
+            break;
+        case 1:// Fire mission dependent upon artillery class
             PC.ServerRequestArtillery(Radio, MenuInteger);
-        Case 2:// Firemission dependant apon artillery class
+            break;
+        case 2:// Fire mission dependent upon artillery class
             PC.ServerRequestArtillery(Radio, MenuInteger);
+            break;
     }
 }
-
-
-
 
 defaultproperties
 {
     Options(0)=(ActionText="Fire-mission TRP",Material=Texture'DH_InterfaceArt2_tex.Icons.Artillery')
-    Options(1)=(ActionText="Fire-mission Surpressive",Material=Texture'DH_InterfaceArt2_tex.Icons.Artillery')
+    Options(1)=(ActionText="Fire-mission Supressive",Material=Texture'DH_InterfaceArt2_tex.Icons.Artillery')
     Options(2)=(ActionText="Fire-mission Barrage",Material=Texture'DH_InterfaceArt2_tex.Icons.Artillery')
 }
