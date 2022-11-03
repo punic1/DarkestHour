@@ -2022,8 +2022,8 @@ function DrawSignals(Canvas C)
             continue;
         }
 
-        SignalColor = PC.SquadSignals[i].SignalClass.default.Color;
-        SignalMaterial = PC.SquadSignals[i].SignalClass.default.WorldIconMaterial;
+        SignalColor = PC.SquadSignals[i].SignalClass.static.GetColor(PC.SquadSignals[i].OptionalObject);
+        SignalMaterial = PC.SquadSignals[i].SignalClass.static.GetWorldIconMaterial(PC.SquadSignals[i].OptionalObject);
         LabelText = PC.SquadSignals[i].SignalClass.default.SignalName;
 
         bIsNew = Level.TimeSeconds - PC.SquadSignals[i].TimeSeconds < SignalNewTimeSeconds;
@@ -2056,6 +2056,8 @@ function DrawSignals(Canvas C)
         {
             SignalIconSize = SignalIconSizeEnd;
         }
+
+        SignalIconSize *= PC.SquadSignals[i].SignalClass.default.WorldIconScale;
 
         C.SetPos(ScreenLocation.X - (SignalIconSize / 2), ScreenLocation.Y - (SignalIconSize / 2));
         C.DrawTile(SignalMaterial, SignalIconSize, SignalIconSize, 0, 0, SignalMaterial.MaterialUSize() - 1, SignalMaterial.MaterialVSize() - 1);
@@ -3610,6 +3612,12 @@ function DrawMap(Canvas C, AbsoluteCoordsInfo SubCoords, DHPlayer Player, Box Vi
 
         for (j = 0; j < ObjA.AlliesRequiredObjForCapture.Length; ++j)
         {
+            // Bounds check the connections indices.
+            if (ObjA.AlliesRequiredObjForCapture[j] < 0 || ObjA.AlliesRequiredObjForCapture[j] >= arraycount(DHGRI.DHObjectives))
+            {
+                continue;
+            }
+
             ObjB = DHGRI.DHObjectives[ObjA.AlliesRequiredObjForCapture[j]];
 
             if (ObjB == none)

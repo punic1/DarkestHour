@@ -138,6 +138,7 @@ struct SquadSignal
     var class<DHSquadSignal> SignalClass;
     var vector Location;
     var float TimeSeconds;
+    var Object OptionalObject;
 };
 
 var     SquadSignal             SquadSignals[SQUAD_SIGNALS_MAX];
@@ -5818,7 +5819,7 @@ function ServerSquadPromote(DHPlayerReplicationInfo NewSquadLeader)
     }
 }
 
-function ServerSquadSignal(class<DHSquadSignal> SignalClass, vector Location)
+function ServerSquadSignal(class<DHSquadSignal> SignalClass, vector Location, optional Object OptionalObject)
 {
     local DHPlayerReplicationInfo PRI;
 
@@ -5826,7 +5827,7 @@ function ServerSquadSignal(class<DHSquadSignal> SignalClass, vector Location)
 
     if (SquadReplicationInfo != none && PRI != none)
     {
-        SquadReplicationInfo.SendSquadSignal(PRI, GetTeamNum(), PRI.SquadIndex, SignalClass, Location);
+        SquadReplicationInfo.SendSquadSignal(PRI, GetTeamNum(), PRI.SquadIndex, SignalClass, Location, OptionalObject);
     }
 }
 
@@ -5983,7 +5984,7 @@ function RemovePersonalMarker(int Index)
     PersonalMapMarkers.Remove(Index, 1);
 }
 
-simulated function ClientSquadSignal(class<DHSquadSignal> SignalClass, vector L)
+simulated function ClientSquadSignal(class<DHSquadSignal> SignalClass, vector L, optional Object OptionalObject)
 {
     local int i;
     local int Index;
@@ -6026,6 +6027,7 @@ simulated function ClientSquadSignal(class<DHSquadSignal> SignalClass, vector L)
         SquadSignals[Index].SignalClass = SignalClass;
         SquadSignals[Index].Location = L;
         SquadSignals[Index].TimeSeconds = Level.TimeSeconds;
+        SquadSignals[Index].OptionalObject = OptionalObject;
     }
 }
 
@@ -7557,25 +7559,6 @@ function ERoleEnabledResult GetRoleEnabledResult(DHRoleInfo RI)
     }
 
     return RER_Enabled;
-}
-
-function DestroyShovelItem()
-{
-    local DHPawn P;
-    local Weapon Inv;
-    local Class<Weapon> ShovelClass;
-
-    P = DHPawn(Pawn);
-    ShovelClass = class<Weapon>(DynamicLoadObject("DH_Equipment.DHShovelItem", class'Class'));
-    Inv = Weapon(P.FindInventoryType(ShovelClass));
-
-    if (P != none && P.Weapon != none && ClassIsChildOf(P.Weapon.Class, ShovelClass))
-    {
-        // We are currently holding a shovel, let's put it away
-        Inv.ClientWeaponThrown();
-    }
-    
-     P.DeleteInventory(Inv);
 }
 
 defaultproperties

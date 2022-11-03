@@ -1738,7 +1738,7 @@ function SetName(int TeamIndex, int SquadIndex, string Name)
 // SQUAD SIGNALS
 //==============================================================================
 
-function SendSquadSignal(DHPlayerReplicationInfo PRI, int TeamIndex, int SquadIndex, class<DHSquadSignal> SignalClass, vector Location)
+function SendSquadSignal(DHPlayerReplicationInfo PRI, int TeamIndex, int SquadIndex, class<DHSquadSignal> SignalClass, vector Location, optional Object OptionalObject)
 {
     local int i;
     local array<DHPlayerReplicationInfo> Members;
@@ -1756,6 +1756,8 @@ function SendSquadSignal(DHPlayerReplicationInfo PRI, int TeamIndex, int SquadIn
         return;
     }
 
+    SignalClass.static.OnSent(MyPC, Location, OptionalObject);
+
     GetMembers(TeamIndex, SquadIndex, Members);
 
     for (i = 0; i < Members.Length; ++i)
@@ -1766,7 +1768,7 @@ function SendSquadSignal(DHPlayerReplicationInfo PRI, int TeamIndex, int SquadIn
             OtherPC.Pawn != none &&
             VSize(OtherPC.Pawn.Location - MyPC.Pawn.Location) < class'DHUnits'.static.MetersToUnreal(50))
         {
-            OtherPC.ClientSquadSignal(SignalClass, Location);
+            OtherPC.ClientSquadSignal(SignalClass, Location, OptionalObject);
         }
     }
 }
@@ -2714,12 +2716,6 @@ function MaybeInvalidateRole(DHPlayer PC)
         // the deploy menu upon death.
         PC.ServerSetPlayerInfo(255, DefaultRoleIndex, -1, -1, PC.SpawnPointIndex, PC.VehiclePoolIndex);
         PC.bSpawnParametersInvalidated = true;
-    }
-
-    // HACK: Not a nice place to put this.
-    if (PC.IsSquadLeader())
-    {
-        PC.DestroyShovelItem();
     }
 }
 
