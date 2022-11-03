@@ -28,7 +28,10 @@ function OnSelect(int Index, vector Location)
     {
         Case 0:// Firemission dependant apon artillery class
             PC.ServerRequestArtillery(Radio, MenuInteger);
-            Interaction.Hide();
+        Case 1:// Firemission dependant apon artillery class
+            PC.ServerRequestArtillery(Radio, MenuInteger);
+        Case 2:// Firemission dependant apon artillery class
+            PC.ServerRequestArtillery(Radio, MenuInteger);
     }
 }
 
@@ -37,7 +40,7 @@ function OnSelect(int Index, vector Location)
 
 defaultproperties
 {
-    Options(0)=(ActionText="Fire-mission TRP",Material=Texture'DH_InterfaceArt2_tex.Icons.rally_point')
-    Options(1)=(ActionText="Fire-mission Surpressive",Material=Texture'DH_InterfaceArt2_tex.Icons.rally_point')
-    Options(2)=(ActionText="Fire-mission Barrage",Material=Texture'DH_InterfaceArt2_tex.Icons.rally_point')
+    Options(0)=(ActionText="Fire-mission TRP",Material=Texture'DH_InterfaceArt2_tex.Icons.Artillery')
+    Options(1)=(ActionText="Fire-mission Surpressive",Material=Texture'DH_InterfaceArt2_tex.Icons.Artillery')
+    Options(2)=(ActionText="Fire-mission Barrage",Material=Texture'DH_InterfaceArt2_tex.Icons.Artillery')
 }

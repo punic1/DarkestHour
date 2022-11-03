@@ -148,8 +148,7 @@ function OnSelect(int OptionIndex, vector Location)
         if (Error == ERROR_None)
         {
             Interaction.PushMenu("DH_Engine.DHCommandMenu_FireMissionType", Radio, Index);
-            PC.ServerRequestArtillery(Radio, Options[OptionIndex].OptionalInteger);
-            Interaction.Hide();
+            return;
         }
         else if (Error == ERROR_Cancellable)
         {

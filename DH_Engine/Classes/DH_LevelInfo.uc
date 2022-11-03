@@ -72,7 +72,6 @@ struct ArtilleryType
     var() int                   ConfirmIntervalSeconds;     // The amount of seconds it will take until another request can be confirmed.
     var() EBatterySize          BatterySize;                // number of guns/tubes etc. in the battery
     var() EBarrageCount         BarrageCount;               // number of barrages
-    //var() EDispersionType       DispersionType;             // small, medium, large (corresponding to say 10m, 20m, 50m radii)
     var() int                   Interval;                   // number of seconds between barrages
 };
 var(Artillery) array<ArtilleryType> ArtilleryTypes;

@@ -187,8 +187,4 @@ defaultproperties
     bAlwaysRelevant=true
 
     MenuIcon=Texture'DH_InterfaceArt2_tex.Icons.Artillery'
-    DispersionTypes(0)=(Type=DISPERSION_Small,Radius=5)
-    DispersionTypes(1)=(Type=DISPERSION_Medium,Radius=15)
-    DispersionTypes(2)=(Type=DISPERSION_Large,Radius=20)
-
 }
