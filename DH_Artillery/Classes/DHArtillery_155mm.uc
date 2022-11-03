@@ -6,7 +6,7 @@
 // Red Orchestra artillery system.
 //==============================================================================
 
-class DHArtillery_Legacy extends DHArtillery;
+class DHArtillery_155mm extends DHArtillery;
 
 var int ShellCounter; // no. of shells fired so far in current salvo (renamed from SpawnCounter)
 var int SalvoCounter; // no. of salvoes fired so far
@@ -20,12 +20,45 @@ var int SpreadAmount; // randomised spread of each shell (in UU)
 
 var DHGameReplicationInfo GRI;
 
+
+
+function Setup()
+{
+    local DH_LevelInfo      LI;
+    local float             StrikeDelay, MaxSalvoDuration;
+
+    // Get arty strike properties from our team's settings in the map's DHLevelInfo
+    LI = class'DH_LevelInfo'.static.GetInstance(Level);
+
+    if (FireMissionIndex != 0)
+    {
+        BatterySize = LI.GetBatterySize(TeamIndex) - 
+    }
+
+    BatterySize = LI.GetBatterySize(TeamIndex) * (FireMissionIndex + 1);
+    log(FireMissionIndex);
+    SalvoAmount = LI.GetSalvoAmount(TeamIndex);
+    SpreadAmount = LI.GetSpreadAmount(TeamIndex);
+    StrikeDelay = float(LI.GetStrikeDelay(TeamIndex)) * (0.85 + (FRand() * 0.3));  // +/- 15% randomisation on delay
+
+
+    // Set timer until arty strike begins
+    SetTimer(FMax(StrikeDelay, 1.0), false); // added a minimum to avoid any possibility of setting a null timer
+
+    // Set LifeSpan until this actor destroys itself
+    // Added as a fail-safe in case the sequence of timers somehow gets interrupted & we don't ever get to end of arty strike
+    // If that happened this actor wouldn't destroy itself & arty strike would remain 'live', stopping the team from calling any more arty
+    // This actor's LifeSpan is set to the maximum possible length of the strike, assuming the max random time between shells & salvoes
+    MaxSalvoDuration = 1.5 * (BatterySize - 1);
+    LifeSpan = StrikeDelay + (20.0 * (SalvoAmount - 1)) + (SalvoAmount * MaxSalvoDuration) + 1.0;
+
+}
+
 // From deprecated ROArtillerySpawner, optimised a little
 // And setting a LifeSpan for this actor, as a fail-safe in case the sequence of timers somehow gets interrupted & we don't ever get to end of arty strike
 function PostBeginPlay()
 {
-    local DH_LevelInfo      LI;
-    local float             StrikeDelay, MaxSalvoDuration;
+    
 
     super.PostBeginPlay();
 
@@ -43,23 +76,7 @@ function PostBeginPlay()
         return;
     }
 
-    // Get arty strike properties from our team's settings in the map's DHLevelInfo
-    LI = class'DH_LevelInfo'.static.GetInstance(Level);
-
-    BatterySize = LI.GetBatterySize(TeamIndex);
-    SalvoAmount = LI.GetSalvoAmount(TeamIndex);
-    SpreadAmount = LI.GetSpreadAmount(TeamIndex);
-    StrikeDelay = float(LI.GetStrikeDelay(TeamIndex)) * (0.85 + (FRand() * 0.3));  // +/- 15% randomisation on delay
-
-    // Set timer until arty strike begins
-    SetTimer(FMax(StrikeDelay, 1.0), false); // added a minimum to avoid any possibility of setting a null timer
-
-    // Set LifeSpan until this actor destroys itself
-    // Added as a fail-safe in case the sequence of timers somehow gets interrupted & we don't ever get to end of arty strike
-    // If that happened this actor wouldn't destroy itself & arty strike would remain 'live', stopping the team from calling any more arty
-    // This actor's LifeSpan is set to the maximum possible length of the strike, assuming the max random time between shells & salvoes
-    MaxSalvoDuration = 1.5 * (BatterySize - 1);
-    LifeSpan = StrikeDelay + (20.0 * (SalvoAmount - 1)) + (SalvoAmount * MaxSalvoDuration) + 1.0;
+   
 }
 
 // From deprecated ROArtillerySpawner
@@ -216,7 +233,7 @@ defaultproperties
     ActiveArtilleryMarkerClass=class'DHMapMarker_OngoingBarrage'
     ArtilleryType=ArtyType_Barrage
 
-    FireMissions(0)=(MenuName="Fire-mission TRP",Material=Texture'DH_InterfaceArt2_tex.Icons.Artillery')
-    FireMissions(1)=(MenuName="Fire-mission Barrage",Material=Texture'DH_InterfaceArt2_tex.Icons.Artillery')
-    FireMissions(2)=(MenuName="Fire-mission Surpressive",Material=Texture'DH_InterfaceArt2_tex.Icons.Artillery')
+    FireMissions(0)=(MenuName="Fire-mission TRP")
+    FireMissions(1)=(MenuName="Fire-mission Barrage")
+    FireMissions(2)=(MenuName="Fire-mission Surpressive")
 }

@@ -3,7 +3,7 @@
 // Darklight Games (c) 2008-2022
 //==============================================================================
 
-class DHArtillery_Mortar_Strike extends DHArtillery;
+class DHArtillery_Mortar_80mm extends DHArtillery;
 
 var int SalvoCounter; // no. of salvoes fired so far
 var int ShellCounter; // no. of shells fired so far in current salvo (renamed from SpawnCounter)
