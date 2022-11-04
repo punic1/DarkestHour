@@ -22,8 +22,8 @@ struct FireMission
     var string MenuName;
 };
 
-var array<Firemission> FireMissions;
-var int FireMissionIndex;
+var array<Firemission>          FireMissions;
+var int                         FireMissionIndex;
 var bool                        bCanBeCancelled;
 var int                         RequiredSquadMemberCount;
 

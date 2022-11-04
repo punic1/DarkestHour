@@ -11,8 +11,8 @@ var int ShellCounter; // no. of shells fired so far in current salvo (renamed fr
 var DH_Kz8cmGrW42ProjectileHE LastSpawnedShell; // reference to the last artillery shell spawned by this arty spawner
 
 // strike properties
-var int BatteryCount; // no. of launchers in battery
-var int BarrageCount; // no. of salvoes in strike
+var int BatteryCount;  // no. of shells per salvo
+var int SalvoAmount;  // no. of salvoes in this strike
 var int SpreadAmount; // randomised spread of each shell (in UU)
 var int ShellCount;   // no. of shells fired
 
@@ -32,13 +32,52 @@ function int GetBatteryCount(DH_LevelInfo.EBatterySize BatterySize)
     }
 }
 
+function Setup()
+{
+    local DH_LevelInfo      LI;
+    local DH_LevelInfo.ArtilleryType    AT;
+    local float             StrikeDelay, MaxSalvoDuration;
+    local float        Theta;
+    local float        Radius;
+    local int          AmmountSpread;
+
+    AmmountSpread = sin(theta) * cos(theta);
+
+    // Get arty strike properties from our team's settings in the map's DHLevelInfo
+    LI = class'DH_LevelInfo'.static.GetInstance(Level);
+
+    if (FireMissionIndex == 0)
+    {
+        SalvoAmount = 3;
+        SpreadAmount = LI.GetSpreadAmount(TeamIndex);
+        StrikeDelay = (10 * (0.85 + (FRand() * 0.3)));  // +/- 15% randomisation on delay
+    }
+
+    //BatterySize = LI.GetBatterySize(TeamIndex) * (FireMissionIndex + 1);
+    //log(FireMissionIndex);
+    //SalvoAmount = LI.GetSalvoAmount(TeamIndex);
+    //SpreadAmount = LI.GetSpreadAmount(TeamIndex);
+    // StrikeDelay = float(LI.GetStrikeDelay(TeamIndex)) * (0.85 + (FRand() * 0.3));  // +/- 15% randomisation on delay
+
+
+    // Set timer until arty strike begins
+    SetTimer(FMax(StrikeDelay, 1.0), false); // added a minimum to avoid any possibility of setting a null timer
+
+    // Set LifeSpan until this actor destroys itself
+    // Added as a fail-safe in case the sequence of timers somehow gets interrupted & we don't ever get to end of arty strike
+    // If that happened this actor wouldn't destroy itself & arty strike would remain 'live', stopping the team from calling any more arty
+    // This actor's LifeSpan is set to the maximum possible length of the strike, assuming the max random time between shells & salvoes
+    MaxSalvoDuration = 1.5 * (BatteryCount - 1);
+    LifeSpan = StrikeDelay + (20.0 * (SalvoAmount - 1)) + (SalvoAmount * MaxSalvoDuration) + 1.0;
+
+    super.Setup();
+
+}
 
 function PostBeginPlay()
 {
-    local DH_LevelInfo                  LI;
-    local float                         StrikeDelay, MaxSalvoDuration;
     local DH_LevelInfo.ArtilleryType    AT;
-    local DH_LevelInfo.ArtilleryType    BC;
+    local DH_LevelInfo                  LI;
 
     super.PostBeginPlay();
 
@@ -56,6 +95,8 @@ function PostBeginPlay()
         return;
     }
 
+    
+
     // Set the team index based on the team of the authoring player.
     Requester = PlayerController(Owner);
 
@@ -64,29 +105,8 @@ function PostBeginPlay()
         SetTeamIndex(Requester.GetTeamNum());
     }
 
-    // Get arty strike properties from our team's settings in the map's DHLevelInfo
-    LI = class'DH_LevelInfo'.static.GetInstance(Level);
-
-    if (LI.GetArtilleryTypeInfo(TeamIndex, Class, AT) == false)
-    {
-        Destroy();
-        return;
-    }
-
     BatteryCount = GetBatteryCount(AT.BatterySize);
-    BarrageCount = 1;
-    SpreadAmount = LI.GetSpreadAmount(TeamIndex);
-    StrikeDelay = 7;
 
-    // Set timer until arty strike begins
-    SetTimer(FMax(StrikeDelay, 1.0), false); // added a minimum to avoid any possibility of setting a null timer
-
-    // Set LifeSpan until this actor destroys itself
-    // Added as a fail-safe in case the sequence of timers somehow gets interrupted & we don't ever get to end of arty strike
-    // If that happened this actor wouldn't destroy itself & arty strike would remain 'live', stopping the team from calling any more arty
-    // This actor's LifeSpan is set to the maximum possible length of the strike, assuming the max random time between shells & salvoes
-    MaxSalvoDuration = 1.5 * (BatteryCount - 1);
-    LifeSpan = StrikeDelay + (20.0 * (BarrageCount - 1)) + (BarrageCount * MaxSalvoDuration) + 1.0;
 }
 
 function Timer()
@@ -98,6 +118,8 @@ function Timer()
     local float        Radius;
     const Tau = 6.28318530718;
     local DHCommandMenu_FireMissionType FMT;
+
+    Radius = 15;
 
     // Cancel the strike if the arty officer has switched teams or left the server, or if the round is over
     if (Controller(Owner) == none || Controller(Owner).GetTeamNum() != TeamIndex || !(ROTeamGame(Level.Game) != none && ROTeamGame(Level.Game).IsInState('RoundInPlay')))
@@ -144,8 +166,9 @@ function Timer()
     if (ShellCounter < BatteryCount)
     {
         Theta = FRand() * TAU;
-        RandomSpread.X = Sin(Theta) * Radius;
-        RandomSpread.Y = Cos(Theta) * Radius;
+        RandomSpread.X += Rand((2 * SpreadAmount) + 1) - SpreadAmount; // gives +/- zero to SpreadAmount
+        RandomSpread.Y += Rand((2 * SpreadAmount) + 1) - SpreadAmount;
+
 
         //Dynamic code for setting up specific dispersion on the type, using the FireMissionType menu items.
         
@@ -172,7 +195,7 @@ function Timer()
     }
 
     // If there's still at least one more salvo to come, set a new, longer timer to start the next salvo
-    if (SalvoCounter < BarrageCount)
+    if (SalvoCounter < SalvoAmount)
     {
         ShellCounter = 0; // reset shell counter for next salvo
         SetTimer(10.0 + (FRand() * 10.0), false); // randomised 10 to 20 seconds between salvoes
@@ -190,5 +213,7 @@ defaultproperties
     MenuName="Light-Saturation Mortar Artillery"
     bAlwaysRelevant=true
 
-    MenuIcon=Texture'DH_InterfaceArt2_tex.Icons.Artillery'
+    FireMissions(0)=(MenuName="Fire-mission TRP")
+    FireMissions(1)=(MenuName="Fire-mission Barrage")
+    FireMissions(2)=(MenuName="Fire-mission Surpressive")
 }
