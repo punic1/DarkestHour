@@ -216,7 +216,4 @@ defaultproperties
     ActiveArtilleryMarkerClass=class'DHMapMarker_OngoingBarrage'
     ArtilleryType=ArtyType_Barrage
 
-    FireMissions(0)=(MenuName="Fire-mission TRP",Material=Texture'DH_InterfaceArt2_tex.Icons.Artillery')
-    FireMissions(1)=(MenuName="Fire-mission Barrage",Material=Texture'DH_InterfaceArt2_tex.Icons.Artillery')
-    FireMissions(2)=(MenuName="Fire-mission Surpressive",Material=Texture'DH_InterfaceArt2_tex.Icons.Artillery')
 }

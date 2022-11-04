@@ -6,7 +6,7 @@
 // Red Orchestra artillery system.
 //==============================================================================
 
-class DHArtillery_155mm extends DHArtillery;
+class DHArtillery_105mm extends DHArtillery;
 
 var int ShellCounter; // no. of shells fired so far in current salvo (renamed from SpawnCounter)
 var int SalvoCounter; // no. of salvoes fired so far
@@ -20,26 +20,41 @@ var int SpreadAmount; // randomised spread of each shell (in UU)
 
 var DHGameReplicationInfo GRI;
 
+function int GetBatteryCount(DH_LevelInfo.EBatterySize BatterySize)
+{
+    switch(BatterySize)
+    {
+        case BATTERY_Small:
+            return 2;
+        case BATTERY_Medium:
+            return 4;
+        case BATTERY_Large: 
+            return 8;
+    }
+}
 
 
 function Setup()
 {
     local DH_LevelInfo      LI;
+    local DH_LevelInfo.ArtilleryType    AT;
     local float             StrikeDelay, MaxSalvoDuration;
 
     // Get arty strike properties from our team's settings in the map's DHLevelInfo
     LI = class'DH_LevelInfo'.static.GetInstance(Level);
 
-    if (FireMissionIndex != 0)
+    if (FireMissionIndex == 0)
     {
-        BatterySize = LI.GetBatterySize(TeamIndex) - 
+        BatterySize = GetBatteryCount(AT.BatterySize); 
+        SalvoAmount = 3;
+        SpreadAmount =  
     }
 
-    BatterySize = LI.GetBatterySize(TeamIndex) * (FireMissionIndex + 1);
-    log(FireMissionIndex);
-    SalvoAmount = LI.GetSalvoAmount(TeamIndex);
-    SpreadAmount = LI.GetSpreadAmount(TeamIndex);
-    StrikeDelay = float(LI.GetStrikeDelay(TeamIndex)) * (0.85 + (FRand() * 0.3));  // +/- 15% randomisation on delay
+    //BatterySize = LI.GetBatterySize(TeamIndex) * (FireMissionIndex + 1);
+    //log(FireMissionIndex);
+    //SalvoAmount = LI.GetSalvoAmount(TeamIndex);
+    //SpreadAmount = LI.GetSpreadAmount(TeamIndex);
+    // = float(LI.GetStrikeDelay(TeamIndex)) * (0.85 + (FRand() * 0.3));  // +/- 15% randomisation on delay
 
 
     // Set timer until arty strike begins
