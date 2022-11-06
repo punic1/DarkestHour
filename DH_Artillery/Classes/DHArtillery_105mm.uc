@@ -255,7 +255,7 @@ defaultproperties
    MenuName="Medium concentration 105mm Artillery"
    bAlwaysRelevant=true
 
-    FireMissions(0)=(MenuName="Fire-mission TRP")
+    FireMissions(0)=(MenuName="Fire-mission Point-target")
     FireMissions(1)=(MenuName="Fire-mission Barrage")
     FireMissions(2)=(MenuName="Fire-mission Surpressive")
 }
