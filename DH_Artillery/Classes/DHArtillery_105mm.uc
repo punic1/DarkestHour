@@ -20,6 +20,19 @@ var int SpreadAmount; // randomised spread of each shell (in UU)
 
 var DHGameReplicationInfo GRI;
 
+struct Salvo
+{
+     var class<Projectile> ProjectileClass;
+     var int ShellCount;                            // min amount of shells fired
+     var float Delay;                               // delay before the salvo is fired
+     var float ShotInterval;                        // amount of time between shots in the salvo
+     var range ShotIntervalVariance;                // the range of variance between shot intervals in the salvo
+};
+
+
+var array<salvo> Salvoes;
+
+
 function int GetBatteryCount(DH_LevelInfo.EBatterySize BatterySize)
 {
     switch(BatterySize)
@@ -39,6 +52,11 @@ function Setup()
     local DH_LevelInfo      LI;
     local DH_LevelInfo.ArtilleryType    AT;
     local float             StrikeDelay, MaxSalvoDuration;
+    local int i;
+    local class<DHArtillery_105mm> Artillery;
+    local Salvo S;
+
+   
 
     // Get arty strike properties from our team's settings in the map's DHLevelInfo
     LI = class'DH_LevelInfo'.static.GetInstance(Level);
@@ -48,7 +66,15 @@ function Setup()
 
     if (FireMissionIndex == 0)
     {
-        
+      
+        S.ProjectileClass = class'DH_ShermanCannonShellSmoke';
+        S.ShellCount = 1;
+        S.Delay = Frand() * 2;
+        S.ShotInterval = 5;
+        S.ShotIntervalVariance.Min = 0;
+        S.ShotIntervalVariance.Max = 2;
+        Salvoes[Salvoes.length] = S;
+    
         BatteryCount = GetBatteryCount(AT.BatterySize); 
         SalvoAmount = 2;
         SpreadAmount = 400;

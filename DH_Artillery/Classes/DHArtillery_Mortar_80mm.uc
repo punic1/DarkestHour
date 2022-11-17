@@ -37,7 +37,7 @@ function Setup()
     local DH_LevelInfo      LI;
     local DH_LevelInfo.ArtilleryType    AT;
     local float             StrikeDelay, MaxSalvoDuration;
-
+    
 
     // Get arty strike properties from our team's settings in the map's DHLevelInfo
     LI = class'DH_LevelInfo'.static.GetInstance(Level);
