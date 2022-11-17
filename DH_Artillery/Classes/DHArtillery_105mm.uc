@@ -39,19 +39,20 @@ function Setup()
     local DH_LevelInfo      LI;
     local DH_LevelInfo.ArtilleryType    AT;
     local float             StrikeDelay, MaxSalvoDuration;
-    
-
 
     // Get arty strike properties from our team's settings in the map's DHLevelInfo
     LI = class'DH_LevelInfo'.static.GetInstance(Level);
+    
+    LI.GetArtilleryTypeInfo(TeamIndex, Class, AT);
+
 
     if (FireMissionIndex == 0)
     {
+        
         BatteryCount = GetBatteryCount(AT.BatterySize); 
-        SalvoAmount = 3;
-        SpreadAmount = LI.GetSpreadAmount(TeamIndex);
+        SalvoAmount = 2;
+        SpreadAmount = 400;
         StrikeDelay = float(LI.GetStrikeDelay(TeamIndex)) * (0.85 + (FRand() * 0.3));  // +/- 15% randomisation on delay
-
     }
 
     //BatterySize = LI.GetBatterySize(TeamIndex) * (FireMissionIndex + 1);

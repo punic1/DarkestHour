@@ -37,27 +37,28 @@ function Setup()
     local DH_LevelInfo      LI;
     local DH_LevelInfo.ArtilleryType    AT;
     local float             StrikeDelay, MaxSalvoDuration;
-    local float        Theta;
-    local float        Radius;
-    local int          AmmountSpread;
 
-    AmmountSpread = sin(theta) * cos(theta);
 
     // Get arty strike properties from our team's settings in the map's DHLevelInfo
     LI = class'DH_LevelInfo'.static.GetInstance(Level);
+    
+    LI.GetArtilleryTypeInfo(TeamIndex, Class, AT);
+
 
     if (FireMissionIndex == 0)
     {
-        SalvoAmount = 3;
+        BatteryCount = GetBatteryCount(AT.BatterySize); 
+        SalvoAmount = LI.GetSalvoAmount(TeamIndex);
         SpreadAmount = LI.GetSpreadAmount(TeamIndex);
-        StrikeDelay = (10 * (0.85 + (FRand() * 0.3)));  // +/- 15% randomisation on delay
+        StrikeDelay = float(LI.GetStrikeDelay(TeamIndex)) * (0.85 + (FRand() * 0.3));  // +/- 15% randomisation on delay
+
     }
 
     //BatterySize = LI.GetBatterySize(TeamIndex) * (FireMissionIndex + 1);
     //log(FireMissionIndex);
     //SalvoAmount = LI.GetSalvoAmount(TeamIndex);
     //SpreadAmount = LI.GetSpreadAmount(TeamIndex);
-    // StrikeDelay = float(LI.GetStrikeDelay(TeamIndex)) * (0.85 + (FRand() * 0.3));  // +/- 15% randomisation on delay
+    // = float(LI.GetStrikeDelay(TeamIndex)) * (0.85 + (FRand() * 0.3));  // +/- 15% randomisation on delay
 
 
     // Set timer until arty strike begins
