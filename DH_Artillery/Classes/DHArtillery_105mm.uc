@@ -30,8 +30,8 @@ struct Salvo
 };
 
 
-var array<salvo> Salvoes;
-
+var array<salvo> Salvoes; //salvo array to define the properties of a specific salvo 
+                          //(E.G Firing a ranging smoke round on the first salvo, then continuing with the barrage)
 
 function int GetBatteryCount(DH_LevelInfo.EBatterySize BatterySize)
 {
