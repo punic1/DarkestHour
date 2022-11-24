@@ -431,7 +431,7 @@ function ResetSquadNextRallyPointTimes()
     }
 }
 
-function ResetSquadInfo()
+function ResetSquadRallyPoints()
 {
     local int i;
 
@@ -443,6 +443,13 @@ function ResetSquadInfo()
             RallyPoints[i] = none;
         }
     }
+    
+    ResetSquadNextRallyPointTimes();
+}
+
+function ResetSquadInfo()
+{
+    local int i;
 
     for (i = 0; i < arraycount(AxisMembers); ++i)
     {
@@ -716,17 +723,34 @@ function int CreateSquad(DHPlayerReplicationInfo PRI, optional string Name)
 // Changes the squad leader. Returns true if the squad leader was successfully changed.
 function bool ChangeSquadLeader(DHPlayerReplicationInfo PRI, int TeamIndex, int SquadIndex, DHPlayerReplicationInfo NewSquadLeader)
 {
-    local DHPlayer PC;
-    local DHPlayer OtherPC;
+    local DHBot Bot;
+    local DHPlayer PC, OtherPC;
+    local DHPlayerReplicationInfo Admin, CurrentSquadLeader;
+    local bool bRequestedByAdmin;
 
     if (PRI == none)
     {
         return false;
     }
 
-    PC = DHPlayer(PRI.Owner);
+    // Change has been requested by an admin: swap PRI with the actual SL.
+    if (PRI.IsLoggedInAsAdmin() && NewSquadLeader != none)
+    {
+        Admin = PRI;
+        CurrentSquadLeader = GetSquadLeader(TeamIndex, NewSquadLeader.SquadIndex);
 
-    if (PC == none)
+        if (CurrentSquadLeader != none && CurrentSquadLeader != Admin)
+        {
+            PRI = CurrentSquadLeader;
+            SquadIndex = NewSquadLeader.SquadIndex;
+            bRequestedByAdmin = true;
+        }
+    }
+
+    PC = DHPlayer(PRI.Owner);
+    Bot = DHBot(PRI.Owner);
+
+    if (PC == none && Bot == none)
     {
         return false;
     }
@@ -758,8 +782,22 @@ function bool ChangeSquadLeader(DHPlayerReplicationInfo PRI, int TeamIndex, int 
 
     MaybeLeaveCommandVoiceChannel(PRI);
 
-    // "You are no longer the squad leader"
-    PC.ReceiveLocalizedMessage(SquadMessageClass, 33);
+    if (bRequestedByAdmin)
+    {
+        class'DarkestHourGame'.static.BroadcastTeamLocalizedMessage(Level,
+                                                                    TeamIndex,
+                                                                    class'DHAdminMessage',
+                                                                    class'UInteger'.static.FromShorts(1, SquadIndex),
+                                                                    Admin,
+                                                                    NewSquadLeader,
+                                                                    self);
+    }
+
+    if (PC != none)
+    {
+        // "You are no longer the squad leader"
+        PC.ReceiveLocalizedMessage(SquadMessageClass, 33);
+    }
 
     OtherPC = DHPlayer(NewSquadLeader.Owner);
 
@@ -1167,7 +1205,20 @@ function bool KickFromSquad(DHPlayerReplicationInfo PRI, byte TeamIndex, int Squ
 
     if (!IsSquadLeader(PRI, TeamIndex, SquadIndex) || !IsInSquad(MemberToKick, TeamIndex, SquadIndex))
     {
-        return false;
+        if (PRI.IsLoggedInAsAdmin())
+        {
+            class'DarkestHourGame'.static.BroadcastTeamLocalizedMessage(Level,
+                                                                        TeamIndex,
+                                                                        class'DHAdminMessage',
+                                                                        class'UInteger'.static.FromShorts(0, SquadIndex),
+                                                                        PRI,
+                                                                        MemberToKick,
+                                                                        self);
+        }
+        else
+        {
+            return false;
+        }
     }
 
     LeaveSquad(MemberToKick);
@@ -1738,37 +1789,39 @@ function SetName(int TeamIndex, int SquadIndex, string Name)
 // SQUAD SIGNALS
 //==============================================================================
 
-function SendSquadSignal(DHPlayerReplicationInfo PRI, int TeamIndex, int SquadIndex, class<DHSquadSignal> SignalClass, vector Location)
+function SendSignal(DHPlayerReplicationInfo PRI, int TeamIndex, int SquadIndex, class<DHSignal> SignalClass, vector Location, optional Object OptionalObject)
 {
     local int i;
+    local float Radius;
     local array<DHPlayerReplicationInfo> Members;
-    local DHPlayer MyPC, OtherPC;
+    local DHPlayer Sender, Recipient;
+    local Pawn OtherPawn;
 
-    if (!IsSquadLeader(PRI, TeamIndex, SquadIndex))
+    if (!IsSquadLeader(PRI, TeamIndex, SquadIndex) && !IsSquadAssistant(PRI, TeamIndex, SquadIndex))
     {
         return;
     }
 
-    MyPC = DHPlayer(PRI.Owner);
+    Sender = DHPlayer(PRI.Owner);
 
-    if (MyPC == none || MyPC.Pawn == none)
+    if (Sender == none || Sender.Pawn == none)
     {
         return;
     }
 
-    GetMembers(TeamIndex, SquadIndex, Members);
+    Radius = class'DHUnits'.static.MetersToUnreal(SignalClass.default.SignalRadiusInMeters);  // TODO: have this determined by the signal class
 
-    for (i = 0; i < Members.Length; ++i)
+    foreach Sender.Pawn.RadiusActors(class'Pawn', OtherPawn, Radius)
     {
-        OtherPC = DHPlayer(Members[i].Owner);
+        Recipient = DHPlayer(OtherPawn.Controller);
 
-        if (OtherPC != none &&
-            OtherPC.Pawn != none &&
-            VSize(OtherPC.Pawn.Location - MyPC.Pawn.Location) < class'DHUnits'.static.MetersToUnreal(50))
+        if (SignalClass.static.CanPlayerRecieve(Sender, Recipient))
         {
-            OtherPC.ClientSquadSignal(SignalClass, Location);
+            Recipient.ClientSignal(SignalClass, Location, OptionalObject);
         }
     }
+
+    SignalClass.static.OnSent(Sender, Location, OptionalObject);
 }
 
 function DHSpawnPoint_SquadRallyPoint GetRallyPoint(int TeamIndex, int SquadIndex)
@@ -2714,12 +2767,6 @@ function MaybeInvalidateRole(DHPlayer PC)
         // the deploy menu upon death.
         PC.ServerSetPlayerInfo(255, DefaultRoleIndex, -1, -1, PC.SpawnPointIndex, PC.VehiclePoolIndex);
         PC.bSpawnParametersInvalidated = true;
-    }
-
-    // HACK: Not a nice place to put this.
-    if (PC.IsSquadLeader())
-    {
-        PC.DestroyShovelItem();
     }
 }
 
