@@ -10,7 +10,7 @@ defaultproperties
     // Turret mesh
     Mesh=SkeletalMesh'DH_DaimlerMk1_anm.turret_ext'
     Skins(0)=Texture'DH_DaimlerMk1_tex.body.body_02'
-    CollisionStaticMesh=StaticMesh'DH_DaimlerMkI_stc.collision.turret_collision'
+    //CollisionStaticMesh=StaticMesh'DH_DaimlerMkI_stc.collision.turret_collision' //needs a collision mesh implimented
     FireEffectScale=1.25 // turret fire is larger & positioned in centre of open turret
     FireEffectOffset=(X=5.0,Y=20.0,Z=0.0)
 
