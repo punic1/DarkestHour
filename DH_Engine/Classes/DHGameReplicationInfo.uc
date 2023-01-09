@@ -79,6 +79,7 @@ var SupplyPoint         SupplyPoints[SUPPLY_POINTS_MAX];
 
 var DHRadio             Radios[RADIOS_MAX];
 
+var int                 AxisNationID;
 var int                 AlliedNationID;
 var int                 AlliesVictoryMusicIndex;
 var int                 AxisVictoryMusicIndex;
@@ -280,7 +281,7 @@ replication
         TeamScores;
 
     reliable if (bNetInitial && Role == ROLE_Authority)
-        AlliedNationID, ConstructionClasses, MapMarkerClasses;
+        AxisNationID, AlliedNationID, ConstructionClasses, MapMarkerClasses;
 }
 
 simulated event PreBeginPlay()
@@ -787,7 +788,7 @@ function int CollectSupplyFromMainCache(int Team, int MaxCarryingCapacity)
 }
 
 // This will return supply caches that are able to generate supply (aka not full)
-simulated function int GetNumberOfGeneratingSupplyPointsForTeam(int Team)
+function int GetNumberOfGeneratingSupplyPointsForTeam(int Team)
 {
     local int i, Count;
 
@@ -797,8 +798,7 @@ simulated function int GetNumberOfGeneratingSupplyPointsForTeam(int Team)
         if (SupplyPoints[i].Actor != none &&
             SupplyPoints[i].bIsActive == 1 &&
             SupplyPoints[i].TeamIndex == Team &&
-            !SupplyPoints[i].Actor.IsFull() &&
-            SupplyPoints[i].ActorClass.default.bCanGenerateSupplies)
+            SupplyPoints[i].Actor.IsGeneratingSupplies())
         {
             ++Count;
         }
@@ -2117,6 +2117,11 @@ simulated function float GetDangerZoneIntensity(float PointerX, float PointerY, 
 simulated function bool IsInDangerZone(float PointerX, float PointerY, byte TeamIndex)
 {
     return class'DHDangerZone'.static.IsIn(self, PointerX, PointerY, TeamIndex);
+}
+
+simulated function bool IsInFriendlyZone(float PointerX, float PointerY, byte TeamIndex)
+{
+    return IsInDangerZone(PointerX, PointerY, int(!bool(TeamIndex)));
 }
 
 simulated function DangerZoneUpdated()

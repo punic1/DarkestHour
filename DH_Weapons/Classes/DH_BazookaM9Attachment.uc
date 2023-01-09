@@ -2,8 +2,6 @@
 // Darkest Hour: Europe '44-'45
 // Darklight Games (c) 2008-2021
 //==============================================================================
-// [ ] Calibrate firing ranges
-//==============================================================================
 
 class DH_BazookaM9Attachment extends DHRocketWeaponAttachment;
 
@@ -17,6 +15,7 @@ defaultproperties
     MuzzleBoneName="Muzzle"
     WarheadBoneName="Warhead"
     bHideWarheadWhenFired=true
+    bInitiallyLoaded=false
 
     BackAttachmentLocationOffset=(X=8.0,Y=1.0,Z=-1.0)
     BackAttachmentRotationOffset=(Pitch=-3000,Roll=32000,Yaw=2000)
@@ -26,6 +25,7 @@ defaultproperties
     WA_Reload="reload_m9a1"
 
     PA_AssistedReloadAnim="crouch_reload_assist_baz_m9"
+    PA_ProneAssistedReloadAnim="prone_reload_assist_baz_m9"
 
     PA_MovementAnims(0)="stand_jogF_baz_m9"
     PA_MovementAnims(1)="stand_jogB_baz_m9"
