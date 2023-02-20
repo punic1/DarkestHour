@@ -1,6 +1,6 @@
 //==============================================================================
 // Darkest Hour: Europe '44-'45
-// Darklight Games (c) 2008-2022
+// Darklight Games (c) 2008-2023
 //==============================================================================
 
 class DHPlayer extends ROPlayer
@@ -104,6 +104,7 @@ var     bool                    bSpawnParametersInvalidated;
 var     int                     NextChangeTeamTime;         // the time at which a player can change teams next
                                                             // it resets whenever an objective is taken
 // Weapon locking (punishment for spawn killing)
+var     float                   LastTeamKillTimeSeconds;    // the last time this player got a team-kill
 var     int                     WeaponUnlockTime;           // the time at which the player's weapons will be unlocked (being the round's future ElapsedTime in whole seconds)
 var     int                     PendingWeaponLockSeconds;   // fix for problem where player re-joins server with saved weapon lock, but client doesn't yet have GRI
 var     int                     WeaponLockViolations;       // the number of violations this player has, used to increase the locked period for multiple offences
@@ -1124,6 +1125,14 @@ simulated function bool IsASL()
     return DHPlayerReplicationInfo(PlayerReplicationInfo) != none && DHPlayerReplicationInfo(PlayerReplicationInfo).IsASL();
 }
 
+simulated function bool HasLimitedRole()
+{
+    local DHRoleInfo RI;
+
+    RI = DHRoleInfo(GetRoleInfo());
+    
+    return RI != none && RI.IsLimited();
+}
 
 // Modified to use any distance fog setting for the zone we're in
 simulated function float GetMaxViewDistance()
@@ -7644,4 +7653,6 @@ defaultproperties
 
     MinIQToGrowHead=100
     ArtillerySupportSquadIndex=255
+
+    LastTeamKillTimeSeconds=-100000
 }
