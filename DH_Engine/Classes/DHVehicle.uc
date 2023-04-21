@@ -136,8 +136,8 @@ var     bool                bShouldDrawPositionDots;
 var     bool                bShouldDrawOccupantList;
 
 // Map icon
-var     class<DHMapIconAttachment>  MapIconAttachmentClass;
-var     DHMapIconAttachment         MapIconAttachment;
+var     class<DHMapIconAttachment_Vehicle>  MapIconAttachmentClass;
+var     DHMapIconAttachment_Vehicle         MapIconAttachment;
 
 // Vehicle attachments
 var     array<VehicleAttachment>    VehicleAttachments;      // vehicle attachments, generally decorative, that won't be spawned on a server
@@ -1102,6 +1102,7 @@ function bool TryToDrive(Pawn P)
 function KDriverEnter(Pawn P)
 {
     local Controller C;
+    local DHPlayerReplicationInfo PRI;
     local DHPawn     DHP;
 
     // Get a controller reference
@@ -1174,6 +1175,11 @@ function KDriverEnter(Pawn P)
     else if (bEngineOff) // ADDED so bot starts engine
     {
         ServerStartEngine();
+    }
+
+    if (MapIconAttachment != none)
+    {
+        MapIconAttachment.UpdateOccupancyStatus(self);
     }
 }
 
@@ -1685,6 +1691,11 @@ function DriverLeft()
     Driver = none;
     bDriving = false;
     DrivingStatusChanged();
+
+    if (MapIconAttachment != none)
+    {
+        MapIconAttachment.UpdateOccupancyStatus(self);
+    }
 
     if (Health > 0)
     {

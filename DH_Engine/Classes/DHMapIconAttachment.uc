@@ -37,6 +37,7 @@ var private   int  OldLocationY;
 
 var private   byte TeamIndex;
 var protected byte VisibilityIndex;
+var protected byte Tag; // any data (squad index, status, etc.)
 
 var           int  TrackingUpdateIntervalSeconds;
 var           bool bTrackDangerZone;
@@ -49,7 +50,7 @@ replication
         AttachedTo;
 
     reliable if (bNetDirty && Role == ROLE_Authority)
-        TeamIndex, VisibilityIndex, Quantized2DPose;
+        TeamIndex, VisibilityIndex, Tag, Quantized2DPose;
 }
 
 // Called after spawning and setting the base.
