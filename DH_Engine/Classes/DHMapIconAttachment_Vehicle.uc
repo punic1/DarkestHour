@@ -8,7 +8,7 @@ class DHMapIconAttachment_Vehicle extends DHMapIconAttachment
 
 function EVisibleFor GetVisibility()
 {
-    return VISIBLE_None;
+    return VISIBLE_Team;
 }
 
 function EVisibleFor GetVisibilityInDangerZone()
